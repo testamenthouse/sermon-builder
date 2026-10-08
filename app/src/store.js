@@ -5,6 +5,7 @@ import { fs } from './fs/index.js';
 import { parseSermon, serializeSermon, normalizeMeta, slugify, newId, parseMeta } from '../../shared/format.js';
 import { illustrationBody } from '../../shared/illustrations.js';
 import { seedTemplates, TEMPLATES_DIR } from '../../shared/templates.js';
+import { isWriterLibrary, WRITER_URL } from '../../shared/library.js';
 import { KIND, DEFAULT_KIND_COLORS } from '../../shared/blocks.js';
 import { groupRange, moveRange, moveStep, canInsert, canSwitch } from '../../shared/outline.js';
 import { loadBible, lookupNow, passageText } from './lib/bible.js';
@@ -18,7 +19,7 @@ const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
 // Narrow screens (phones): the rail and side panes become overlays over a single column.
 const NARROW = window.matchMedia('(max-width: 760px)');
 let state = {
-  booting: true, folderOpen: false, resumable: false, gateStatus: '', libName: '',
+  booting: true, folderOpen: false, resumable: false, gateStatus: '', gateLink: '', libName: '',
   sermons: [], collections: [], illustrations: [], settings: { ...DEFAULTS, ...safeJson(ls('sermon.settings', 'null')) },
   screen: 'library', openPath: null, curBlock: null, illPath: null, focusReq: null,
   status: '', libView: { series: 'collections', collection: 'collections' }[ls('sermon.libview', 'collections')] || ls('sermon.libview', 'collections'), libLayout: ls('sermon.liblayout', 'cards'), libQuery: '', libFindOpen: false,
@@ -97,6 +98,8 @@ async function writeSettings() {
 }
 export async function loadLibrary(name) {
   const list = await fs.list();
+  // A Writer library is refused before anything is read, seeded or written, and the folder is forgotten; the gate links to Writer.
+  if (isWriterLibrary(list)) { await fs.forget(); set({ booting: false, folderOpen: false, resumable: false, gateStatus: 'This is a Writer library', gateLink: WRITER_URL }); return; }
   const sermons = [], illustrations = [], seriesMap = new Map(); sigs = new Map();
   for (const e of list) {
     sigs.set(e.path, e.kind + ':' + e.mtime + ':' + e.size);
@@ -115,7 +118,7 @@ export async function loadLibrary(name) {
   await readSettings();
   if (!lastCfg) writeSettings();
   const collections = [...seriesMap.values()].sort((a, b) => a.name.localeCompare(b.name));
-  set({ libName: name, sermons: sortSermons(sermons), collections, illustrations: illustrations.sort((a, b) => a.meta.title.localeCompare(b.meta.title)), folderOpen: true, booting: false, resumable: false, gateStatus: '', screen: 'library', openPath: null, settingsOpen: false });
+  set({ libName: name, sermons: sortSermons(sermons), collections, illustrations: illustrations.sort((a, b) => a.meta.title.localeCompare(b.meta.title)), folderOpen: true, booting: false, resumable: false, gateStatus: '', gateLink: '', screen: 'library', openPath: null, settingsOpen: false });
   startWatch();
   loadBible().catch(() => flash('Bible not loaded'));
   fs.mcp().then(mcpCommand => set({ mcpCommand })).catch(() => {});
@@ -133,11 +136,11 @@ export async function boot() {
   } catch (e) { console.error(e); }
   set({ booting: false });
 }
-export async function pickFolder() { const r = await fs.pick(); if (!r) return set({ gateStatus: 'Could not open' }); if (r.error) return set({ gateStatus: r.error }); await loadLibrary(r.name); }
-export async function resumeFolder() { const r = fs.resumeClick ? await fs.resumeClick() : await fs.resume(); if (!r || r === 'prompt' || r.error) return set({ gateStatus: (r && r.error) || 'Could not open' }); await loadLibrary(r.name); }
+export async function pickFolder() { const r = await fs.pick(); if (!r) return set({ gateStatus: 'Could not open', gateLink: '' }); if (r.error) return set({ gateStatus: r.error, gateLink: '' }); await loadLibrary(r.name); }
+export async function resumeFolder() { const r = fs.resumeClick ? await fs.resumeClick() : await fs.resume(); if (!r || r === 'prompt' || r.error) return set({ gateStatus: (r && r.error) || 'Could not open', gateLink: '' }); await loadLibrary(r.name); }
 export async function logout() {
   stopDictation(); clearTimeout(saveTimer); await flushDisk(); stopWatch(); await fs.forget(); dirty.clear(); lastCfg = null;
-  set({ folderOpen: false, libName: '', sermons: [], collections: [], illustrations: [], openPath: null, screen: 'library', settingsOpen: false, printMenu: false, sermonModal: null, podium: false, biblePane: false, illPane: false, illReturn: null, resumable: false, gateStatus: '' });
+  set({ folderOpen: false, libName: '', sermons: [], collections: [], illustrations: [], openPath: null, screen: 'library', settingsOpen: false, printMenu: false, sermonModal: null, podium: false, biblePane: false, illPane: false, illReturn: null, resumable: false, gateStatus: '', gateLink: '' });
 }
 
 // ---- watcher: disk wins for anything with nothing pending here

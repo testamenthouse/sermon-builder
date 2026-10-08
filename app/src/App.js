@@ -1,7 +1,7 @@
 import { html } from './lib/html.js';
 import { useEffect } from 'react';
 import { useStore, set, boot, saveNow, closeMenus, get, toggleBible, toggleIll, closeLibFind, toggleDictation, stopDictation } from './store.js';
-import { Gate, Blocked } from './ui/Gate.js';
+import { Gate, Blocked, GitHubLink } from './ui/Gate.js';
 import { supported } from './lib/dictation.js';
 import { Library } from './ui/Library.js';
 import { Sermon } from './ui/Sermon.js';
@@ -36,6 +36,7 @@ export function App() {
   return html`<>
     ${screen === 'sermon' ? html`<${Sermon} />` : screen === 'illustrations' ? html`<${Illustrations} />` : screen === 'templates' ? html`<${Templates} />` : html`<${Library} />`}
     ${podium && html`<${Podium} />`}
+    ${!podium && (screen === 'library' || screen === 'templates') && html`<${GitHubLink} />`}
     <${SermonModal} /><${CollectionModal} /><${PrintMenu} /><${Settings} /><${KindColors} /><${NameDialog} /><${Confirm} /><${Alert} /><${DictationBar} /><${DictationStop} />
   </>`;
 }

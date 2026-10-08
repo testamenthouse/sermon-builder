@@ -2,7 +2,9 @@
 
 A minimalist, offline sermon editor for the Mac (and Chrome). You write a sermon as a stack of typed blocks, the King James Bible fills in scripture as you type a reference, Podium mode puts the sermon on screen while you preach, and the whole library is a plain folder of Markdown files you own.
 
-No accounts, no server, no analytics. Everything stays on your machine.
+**Try it now:** https://testamenthouse.github.io/sermon-builder/ (Google Chrome, then pick any folder)
+
+**There is no database.** The only storage is the folder you choose. The whole app runs off that folder: every sermon, collection, template, illustration and setting is a file in it, read and written directly. No accounts, no server, no analytics. Everything stays on your machine.
 
 - [What it does](#what-it-does)
 - [Get it](#get-it)
@@ -34,13 +36,17 @@ No accounts, no server, no analytics. Everything stays on your machine.
 
 **Mac app (Apple Silicon).** Download the latest `.dmg` from [Releases](https://github.com/testamenthouse/sermon-builder/releases), open it, and drag Sermon Builder to Applications. The app checks for updates on launch and installs them on quit.
 
-**Web version.** Serve this folder with any static server and open it in Google Chrome (see [Running the web version](#running-the-web-version)). Chrome is required because the app opens a folder on your disk through the File System Access API. Other browsers show a "Google Chrome required" screen.
+**Web version.** Open the app in Google Chrome:
+
+https://testamenthouse.github.io/sermon-builder/
+
+Or serve this folder with any static server (see [Running the web version](#running-the-web-version)). Chrome is required because the app opens a folder on your disk through the File System Access API. Other browsers show a "Google Chrome required" screen.
 
 Phones and tablets can read a library over the web version when the layout collapses to one column, but they cannot open a folder. Writing happens on a desktop.
 
 ## Your library is a folder
 
-The first time you open the app it asks for a folder. That folder is your library. The app reads and writes the files in it directly and caches nothing, so you can keep it in iCloud Drive or Dropbox, open it in another editor, or back it up like any other folder.
+The first time you open the app it asks for a folder. That folder is your library and the only place anything is stored. There is no database behind it, no copy in the cloud, and no hidden cache: the entire UI is built from the files in that folder each time it reads them, and every edit goes straight back to disk. Keep it in iCloud Drive or Dropbox, open it in another editor, or back it up like any other folder.
 
 ```
 My Sermons/
@@ -60,6 +66,7 @@ My Sermons/
 - A sermon is one Markdown file. Rename the sermon and the file renames. Move it to another collection and the file moves.
 - `Templates/` and `Illustrations/` are reserved. The starter templates are written once into a library that has none, and after that they are yours.
 - `Log out` in Settings is the only thing that makes the app forget the folder.
+- A [Writer](https://github.com/testamenthouse/minimalist-writer) library is refused untouched. Pick one by mistake and the app links you to Writer instead of writing anything into it.
 
 Open `samples/Library` to see a small library with a sermon, a template, and an illustration.
 
