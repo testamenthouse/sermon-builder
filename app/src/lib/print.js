@@ -1,18 +1,19 @@
 // Print pipeline (manuscript / outline / handout on Letter). Builds a clean hidden iframe, no app CSS.
-import { mdHtml, esc } from './md.js';
-import { kindLabel, kindColor } from '../../../shared/blocks.js';
+(function (SB) {
+'use strict';
+const { mdHtml, esc } = SB.lib.md;
+const { kindLabel, kindColor } = SB.shared.blocks;
 
 const fonts = { sans: 'Inter, -apple-system, sans-serif', serif: "Georgia, 'Iowan Old Style', 'Times New Roman', serif", mono: "'SF Mono', Menlo, Consolas, monospace", courier: "'Courier Prime', 'Courier New', Courier, monospace" };
-export const fontFamily = f => fonts[f] || fonts.sans;
+const fontFamily = f => fonts[f] || fonts.sans;
 
-import { pointNumbers, outlineTree } from '../../../shared/outline.js';
-export { pointNumbers };
-export function headingOf(b) { return (b.heading || '').trim() || (b.body || '').split('\n').find(l => l.trim()) || ''; }
-export function metaLine(meta) { return [meta.collection, meta.date ? fmtDate(meta.date) : '', meta.passage].filter(Boolean).join(' · '); }
-export function fmtDate(d) { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(d || ''); if (!m) return d || ''; return new Date(+m[1], +m[2] - 1, +m[3]).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }); }
+const { pointNumbers, outlineTree } = SB.shared.outline;
+function headingOf(b) { return (b.heading || '').trim() || (b.body || '').split('\n').find(l => l.trim()) || ''; }
+function metaLine(meta) { return [meta.collection, meta.date ? fmtDate(meta.date) : '', meta.passage].filter(Boolean).join(' · '); }
+function fmtDate(d) { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(d || ''); if (!m) return d || ''; return new Date(+m[1], +m[2] - 1, +m[3]).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }); }
 
 // scope: 'manuscript' | 'outline' | 'handout'
-export function buildHtml(sermon, scope, colors) {
+function buildHtml(sermon, scope, colors) {
   const { meta, blocks } = sermon, nums = pointNumbers(blocks);
   const tint = b => { const c = kindColor(b.kind, colors); return c ? ' style="color:' + c + '"' : ''; }; // kind colors print on labels and numbers only
   // A point group prints as the editor draws it: number and title flush left as the heading line, the group's blocks indented beneath.
@@ -67,7 +68,7 @@ export function buildHtml(sermon, scope, colors) {
   }
   return '<div class="' + (scope === 'manuscript' ? 'ms' : scope === 'outline' ? 'ol' : 'ho') + '">' + head + body + '</div>';
 }
-export function buildCss(settings, title, paged) {
+function buildCss(settings, title, paged) {
   const ff = fontFamily(settings.font), pt = Math.round(settings.size * 0.67);
   const base = 'html,*{print-color-adjust:exact;-webkit-print-color-adjust:exact}body{margin:0}body{color:#000;background:#fff;font-family:' + ff + ';font-size:' + pt + 'pt;line-height:1.55;-webkit-print-color-adjust:exact}p{margin:0 0 .5em;white-space:pre-wrap;overflow-wrap:break-word}p:last-child{margin-bottom:0}' +
     // head
@@ -94,7 +95,7 @@ export function buildCss(settings, title, paged) {
     ? base + '@page{margin:25mm;@top-center{content:"' + String(title).replace(/[\\"]/g, '\\$&') + '";font-family:' + ff + ';font-size:9pt;color:#000;vertical-align:bottom;padding-bottom:10mm}@bottom-center{content:counter(page);font-family:' + ff + ';font-size:9pt;color:#000;vertical-align:top;padding-top:10mm}}'
     : base + '@page{margin:25mm}';
 }
-export function doPrint(sermon, settings, scope, paged) {
+function doPrint(sermon, settings, scope, paged) {
   const title = sermon.meta.title || 'Untitled', docTitle = title + (scope === 'manuscript' ? '' : ' — ' + scope[0].toUpperCase() + scope.slice(1));
   const html = buildHtml(sermon, scope, settings.colors);
   const css = buildCss(settings, title, !!paged);
@@ -111,3 +112,5 @@ export function doPrint(sermon, settings, scope, paged) {
   const ready = () => (d.fonts ? d.fonts.ready : Promise.resolve()).then(() => setTimeout(go, 50));
   d.readyState === 'complete' ? ready() : (f.onload = ready);
 }
+(SB.lib ||= {}).print = { fontFamily, pointNumbers, headingOf, metaLine, fmtDate, buildHtml, buildCss, doPrint };
+})(globalThis.SB ||= {});

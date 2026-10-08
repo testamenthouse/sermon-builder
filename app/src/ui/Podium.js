@@ -1,17 +1,19 @@
-import { html } from '../lib/html.js';
-import { useEffect, useRef, useState } from 'react';
-import { useStore, set, open } from '../store.js';
-import { mdHtml } from '../lib/md.js';
-import { headingOf, metaLine } from '../lib/print.js';
-import { pointNumbers, depths } from '../../../shared/outline.js';
-import { kindLabel, kindColor } from '../../../shared/blocks.js';
-import { lookupNow, loadBible } from '../lib/bible.js';
-import { I, KIND_ICON } from './Icons.js';
+(function (SB) {
+'use strict';
+const { html } = SB.lib.html;
+const { useEffect, useRef, useState } = React;
+const { useStore, set, open } = SB.store;
+const { mdHtml } = SB.lib.md;
+const { headingOf, metaLine } = SB.lib.print;
+const { pointNumbers, depths } = SB.shared.outline;
+const { kindLabel, kindColor } = SB.shared.blocks;
+const { lookupNow, loadBible } = SB.lib.bible;
+const { I, KIND_ICON } = SB.ui.Icons;
 
 const pad = n => String(Math.floor(n)).padStart(2, '0');
 const fmt = s => (s < 0 ? '−' : '') + pad(Math.abs(s) / 60) + ':' + pad(Math.abs(s) % 60);
 
-export function Podium() {
+function Podium() {
   const s = useStore(st => st.openPath ? st.sermons.find(x => x.path === st.openPath) : null); const colors = useStore(st => st.settings.colors);
   const kc = b => { const c = kindColor(b.kind, colors); return c ? { '--kc': c } : undefined; };
   const [cur, setCur] = useState(0); const [notes, setNotes] = useState(true); const [outline, setOutline] = useState(false); const [remaining, setRemaining] = useState(true); const [now, setNow] = useState(Date.now()); const [pop, setPop] = useState(null);
@@ -85,3 +87,5 @@ export function Podium() {
     <div className="pos">${blocks.length ? (cur + 1) + ' / ' + blocks.length : ''}</div>
   </div>`;
 }
+(SB.ui ||= {}).Podium = { Podium };
+})(globalThis.SB ||= {});

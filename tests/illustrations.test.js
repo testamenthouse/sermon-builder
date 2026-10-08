@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { illustrationBody, illustrationUses, illustrationMatches } from '../shared/illustrations.js';
+import { illustrations } from '../shared/node.js';
+const { illustrationBody, illustrationUses, illustrationMatches } = illustrations;
 
 const ill = { path: 'Illustrations/Lost Sheep.md', meta: { title: 'Lost Sheep', tags: ['grace', 'Luke'], source: 'Spurgeon' }, body: 'A shepherd left ninety-nine.' };
 const sermon = (title, blocks, template = false) => ({ path: title + '.md', meta: { title, template }, blocks });

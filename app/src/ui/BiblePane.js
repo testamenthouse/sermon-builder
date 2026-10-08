@@ -1,10 +1,12 @@
-import { html } from '../lib/html.js';
-import { useEffect, useRef, useState } from 'react';
-import { useStore, set, toggleBible, insertScripture, open, flash } from '../store.js';
-import { loadBible, bible, parseRef, formatRef, verses, search, refLabel, BOOKS } from '../lib/bible.js';
-import { I } from './Icons.js';
+(function (SB) {
+'use strict';
+const { html } = SB.lib.html;
+const { useEffect, useRef, useState } = React;
+const { useStore, set, toggleBible, insertScripture, open, flash } = SB.store;
+const { loadBible, bible, parseRef, formatRef, verses, search, refLabel, BOOKS } = SB.lib.bible;
+const { I } = SB.ui.Icons;
 
-export function BiblePane() {
+function BiblePane() {
   const cur = useStore(s => { const o = s.openPath ? s.sermons.find(x => x.path === s.openPath) : null; return o ? o.blocks.find(b => b.id === s.curBlock) : null; });
   const [q, setQ] = useState(''); const [view, setView] = useState(null); const [hits, setHits] = useState(null); const [sel, setSel] = useState(new Set()); const [ready, setReady] = useState(!!bible());
   const inp = useRef(null), lastRef = useRef('');
@@ -32,3 +34,5 @@ export function BiblePane() {
     ${view && html`<div className="pane-acts"><button className="tb" onClick=${copy}>Copy</button><button className="pb sm" onClick=${insert}>Insert</button></div>`}
   </div>`;
 }
+(SB.ui ||= {}).BiblePane = { BiblePane };
+})(globalThis.SB ||= {});

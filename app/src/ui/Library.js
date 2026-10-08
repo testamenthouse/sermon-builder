@@ -1,14 +1,16 @@
-import { html } from '../lib/html.js';
-import { useEffect, useRef, useState } from 'react';
-import { useStore, set, openSermon, setLibView, setLibLayout, closeLibFind, commitMeta, openTemplates, newSermon } from '../store.js';
-import { I } from './Icons.js';
-import { fmtDate } from '../lib/print.js';
+(function (SB) {
+'use strict';
+const { html } = SB.lib.html;
+const { useEffect, useRef, useState } = React;
+const { useStore, set, openSermon, setLibView, setLibLayout, closeLibFind, commitMeta, openTemplates, newSermon } = SB.store;
+const { I } = SB.ui.Icons;
+const { fmtDate } = SB.lib.print;
 
 const cap = s => s[0].toUpperCase() + s.slice(1);
 const pad = n => String(n).padStart(2, '0');
 const ymd = d => d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
 const statusOf = s => s.meta.status !== 'draft' && !s.meta.template ? cap(s.meta.status) : '';
-export const openIt = s => ({ onClick: () => openSermon(s.path), onDoubleClick: e => { e.stopPropagation(); set({ sermonModal: { path: s.path } }); } });
+const openIt = s => ({ onClick: () => openSermon(s.path), onDoubleClick: e => { e.stopPropagation(); set({ sermonModal: { path: s.path } }); } });
 // The months a collection covers: "Oct 2026", "Sep – Nov 2026" or "Nov 2026 – Jan 2027".
 function span(items) {
   const ds = items.map(s => s.meta.date).filter(Boolean).sort(); if (!ds.length) return '';
@@ -18,7 +20,7 @@ function span(items) {
   return (a.slice(0, 4) === b.slice(0, 4) ? f(a, false) : f(a, true)) + ' – ' + f(b, true);
 }
 
-export function Card({ s, color }) {
+function Card({ s, color }) {
   const meta = [s.meta.date ? fmtDate(s.meta.date) : '', s.meta.passage].filter(Boolean).join(' · ');
   return html`<div className="card" ...${openIt(s)}>
     <div className="sheet"><div className="pg p2" /><div className="pg p1" /><div className="face">${color && html`<div className="stripe" style=${{ background: color }} />`}${s.meta.title}</div></div>
@@ -85,7 +87,7 @@ function Calendar({ sermons, colorOf }) {
   </div>`;
 }
 
-export function Library() {
+function Library() {
   const { libName, sermons, collections, libView, libLayout, libQuery, libFindOpen, status } = useStore(s => ({ libName: s.libName, sermons: s.sermons, collections: s.collections, libView: s.libView, libLayout: s.libLayout, libQuery: s.libQuery, libFindOpen: s.libFindOpen, status: s.status }));
   const findRef = useRef(null); const findOpen = libFindOpen || !!libQuery;
   useEffect(() => { if (libFindOpen && findRef.current) findRef.current.focus(); }, [libFindOpen]);
@@ -134,3 +136,5 @@ export function Library() {
     <div className="status" style=${{ position: 'fixed', left: 20, bottom: 16 }}>${status}</div>
   </div>`;
 }
+(SB.ui ||= {}).Library = { openIt, Card, Library };
+})(globalThis.SB ||= {});

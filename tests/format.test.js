@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { parseSermon, serializeSermon, sermonWords, countWords } from '../shared/format.js';
+import { format } from '../shared/node.js';
+const { parseSermon, serializeSermon, sermonWords, countWords } = format;
 
 const SRC = `---
 title: The Good Shepherd

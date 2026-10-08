@@ -1,4 +1,4 @@
-// Builds data/kjv/kjv.json from a public-domain KJV source (thiagobodruk/bible en_kjv.json layout:
+// Builds data/kjv/kjv.js (a classic script setting SB.kjv) from a public-domain KJV source (thiagobodruk/bible en_kjv.json layout:
 // [{abbrev, name, chapters: [[verse, ...], ...]}, ...] — 66 books in canonical order, 31,102 verses).
 // Usage: node scripts/build-kjv.js <source.json>
 import fs from 'node:fs';
@@ -17,7 +17,7 @@ const books = raw.map((b, i) => {
   return { name: def.name, chapters };
 });
 if (count !== 31102) throw new Error('expected 31102 verses, got ' + count);
-const out = path.resolve('data/kjv/kjv.json');
+const out = path.resolve('data/kjv/kjv.js');
 fs.mkdirSync(path.dirname(out), { recursive: true });
 fs.writeFileSync(out, JSON.stringify({ version: 'KJV', books }));
 console.log('wrote', out, count, 'verses');

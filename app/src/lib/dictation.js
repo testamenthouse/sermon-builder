@@ -4,19 +4,20 @@
 // editor's own input path (serialize, decorate, autosave, undo) runs unchanged; the partial segment is only
 // previewed. "new paragraph" / "new line" inside a segment break the paragraph; "period", "comma",
 // "question mark" and the other spoken marks become punctuation (neither desktop engine does that itself).
-
-export const isChrome = () => {
+(function (SB) {
+'use strict';
+const isChrome = () => {
   const brands = navigator.userAgentData && navigator.userAgentData.brands;
   if (brands) return brands.some(b => b.brand === 'Google Chrome');
   const ua = navigator.userAgent;
   return /Chrome\//.test(ua) && !/Edg\/|OPR\/|Brave|SamsungBrowser|CriOS|Vivaldi|YaBrowser/.test(ua);
 };
-export const native = () => typeof window !== 'undefined' && !!window.dictate;
+const native = () => typeof window !== 'undefined' && !!window.dictate;
 // The app itself runs only where its folder access and dictation work: the Mac app (native bridge) or Google Chrome on the web.
-export const supported = () => native() || isChrome();
+const supported = () => native() || isChrome();
 const WebSR = () => window.SpeechRecognition || window.webkitSpeechRecognition;
 // 'native' | 'web' | null (null on the web outside Chrome: the caller shows the Chrome alert)
-export function backend() { if (native()) return 'native'; if (WebSR() && isChrome()) return 'web'; return null; }
+function backend() { if (native()) return 'native'; if (WebSR() && isChrome()) return 'web'; return null; }
 
 // ---- spoken punctuation, the way macOS Dictation reads it: the command word becomes its mark, attached to the
 // word before it (an opening mark to the word after it), and the next word is capitalized after a sentence end.
@@ -28,7 +29,7 @@ const MARKS = {
 };
 const PHRASES = Object.values(MARKS).flatMap(Object.keys).sort((a, b) => b.length - a.length).map(p => p.replace(/ /g, '\\s+')).join('|');
 const SPOKEN = new RegExp(`\\s*([.,;:!?]?)\\s*\\b(${PHRASES})\\b[.,;:!?]?\\s*`, 'gi');
-export function spokenPunctuation(text) {
+function spokenPunctuation(text) {
   let t = String(text || '').replace(SPOKEN, (m, lead, phrase) => {
     const key = phrase.toLowerCase().replace(/\s+/g, ' ');
     if (key in MARKS.close) return MARKS.close[key] + ' ';
@@ -43,7 +44,7 @@ export function spokenPunctuation(text) {
 // starts with punctuation; a capital when the segment starts a paragraph or follows a sentence end; a spoken mark
 // the paragraph already ends with is not doubled.
 const SENTENCE_END = /[.!?…]["')\]]?\s*$/;
-export function joinText(before, seg) {
+function joinText(before, seg) {
   let t = spokenPunctuation(seg); if (!t) return '';
   const b = String(before || '').replace(/ /g, ' ');
   if (b && /[.,;:!?…]$/.test(b) && t[0] === b[b.length - 1]) { t = t.slice(1).trimStart(); if (!t) return ''; }
@@ -52,9 +53,9 @@ export function joinText(before, seg) {
   return t;
 }
 // a spoken "new paragraph" / "new line" as words (Chrome) or as the newlines Apple's recognizer turns them into
-export const splitCommands = seg => String(seg || '').split(/\s*(?:\bnew\s+(?:paragraph|line)\b[.,]?|\n+)\s*/i);
+const splitCommands = seg => String(seg || '').split(/\s*(?:\bnew\s+(?:paragraph|line)\b[.,]?|\n+)\s*/i);
 
-export function paragraphBefore(el) {
+function paragraphBefore(el) {
   const sel = window.getSelection(); if (!sel.rangeCount || !el.contains(sel.anchorNode)) return '';
   let block = sel.anchorNode; while (block && block.parentNode !== el) block = block.parentNode;
   const r = document.createRange(); r.selectNodeContents(block || el); r.setEnd(sel.anchorNode, sel.anchorOffset);
@@ -65,7 +66,7 @@ const endOf = el => { const r = document.createRange(); r.selectNodeContents(el.
 // Where the words land: the contenteditable that had focus when dictation began (else `fallback()`), at its
 // caret, followed while the user moves it — into any other editable too. A target that leaves the DOM (chapter
 // switch, block delete) gives way to the fallback with the caret at its end.
-export function createInserter(fallback) {
+function createInserter(fallback) {
   let target = null, range = null;
   // follow the caret: into another block, heading or title as well as within the target
   const track = () => {
@@ -103,7 +104,7 @@ export function createInserter(fallback) {
 
 // One session. onState: 'starting' | 'listening' | 'off' (always ends with 'off'); onPartial(text); onFinal(text);
 // onError(label); onLevel(0…1) = how loud the microphone hears (the web engine only says sound / no sound).
-export function createDictation({ onState, onPartial, onFinal, onError, onLevel = () => {} }) {
+function createDictation({ onState, onPartial, onFinal, onError, onLevel = () => {} }) {
   let active = false, off = null, rec = null, closing = null;
   const finish = () => { if (!active && !closing) return; active = false; clearTimeout(closing); closing = null; if (off) { off(); off = null; } onState('off'); };
   const be = backend();
@@ -152,3 +153,5 @@ export function createDictation({ onState, onPartial, onFinal, onError, onLevel 
     get active() { return active; }
   };
 }
+(SB.lib ||= {}).dictation = { isChrome, native, supported, backend, spokenPunctuation, joinText, splitCommands, paragraphBefore, createInserter, createDictation };
+})(globalThis.SB ||= {});

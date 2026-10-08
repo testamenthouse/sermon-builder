@@ -1,11 +1,13 @@
-import { html } from '../lib/html.js';
-import { useEffect, useRef, useState } from 'react';
-import { I } from './Icons.js';
+(function (SB) {
+'use strict';
+const { html } = SB.lib.html;
+const { useEffect, useRef, useState } = React;
+const { I } = SB.ui.Icons;
 
 // The app's own dropdown (no native select): a field-styled button showing the chosen label, a popover of
 // options beneath it. ↑/↓ walk, Enter picks, Esc closes. options = [{ value, label }], a null entry draws a hairline.
 // up = open above the field (for the last row of a dialog).
-export function Select({ value, onChange, options, className = '', up = false }) {
+function Select({ value, onChange, options, className = '', up = false }) {
   const [open, setOpen] = useState(false); const [hi, setHi] = useState(0); const box = useRef(null);
   const rows = options.filter(Boolean), cur = rows.find(o => o.value === value) || rows[0];
   useEffect(() => { const h = e => { if (box.current && !box.current.contains(e.target)) setOpen(false); }; document.addEventListener('pointerdown', h, true); return () => document.removeEventListener('pointerdown', h, true); }, []);
@@ -23,3 +25,5 @@ export function Select({ value, onChange, options, className = '', up = false })
     ${open && html`<div className="pop" style=${up ? { bottom: '100%', left: 0, right: 0, marginBottom: 4 } : { top: '100%', left: 0, right: 0, marginTop: 4 }}>${options.map((o, k) => { if (!o) return html`<div key=${'h' + k} className="hair" />`; const j = ++i; return html`<button key=${o.value} className=${j === hi ? 'on' : ''} onMouseDown=${e => e.preventDefault()} onMouseEnter=${() => setHi(j)} onClick=${() => pick(o)}>${o.label}</button>`; })}</div>`}
   </div>`;
 }
+(SB.ui ||= {}).Select = { Select };
+})(globalThis.SB ||= {});

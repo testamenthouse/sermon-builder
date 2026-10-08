@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { outlineTree, pointNumbers, depths, groupRange, moveRange, moveStep, snapDrop } from '../shared/outline.js';
-import { parseSermon } from '../shared/format.js';
+import { outline, format } from '../shared/node.js';
+const { outlineTree, pointNumbers, depths, groupRange, moveRange, moveStep, snapDrop } = outline, { parseSermon } = format;
 
 const B = (kind, id) => ({ id, kind, heading: id, body: '', flags: [] });
 // intro, P1 [scr, ill], transition, P2 [app], conclusion
@@ -44,7 +44,7 @@ test('drop snapping', () => {
   assert.equal(snapDrop(blocks, 'il', 0), 0);
 });
 test('group-ending kinds are never created inside a container; points never change kind', async () => {
-  const { canInsert, canSwitch } = await import('../shared/outline.js');
+  const { canInsert, canSwitch } = outline;
   assert.equal(canInsert(blocks, 2, 'point'), false); assert.equal(canInsert(blocks, 3, 'transition'), false); assert.equal(canInsert(blocks, 3, 'conclusion'), false);
   assert.equal(canInsert(blocks, 4, 'point'), true); // the end of point 1's group
   assert.equal(canInsert(blocks, 1, 'point'), true); assert.equal(canInsert(blocks, 2, 'scripture'), true); assert.equal(canInsert(blocks, 8, 'point'), true);

@@ -1,12 +1,14 @@
-import { html } from '../lib/html.js';
-import { useEffect, useRef } from 'react';
-import { useStore, set, setLibLayout, closeLibFind, newTemplate } from '../store.js';
-import { Card, openIt } from './Library.js';
-import { I } from './Icons.js';
+(function (SB) {
+'use strict';
+const { html } = SB.lib.html;
+const { useEffect, useRef } = React;
+const { useStore, set, setLibLayout, closeLibFind, newTemplate } = SB.store;
+const { Card, openIt } = SB.ui.Library;
+const { I } = SB.ui.Icons;
 
 // The Templates screen: every file in Templates/, the same thumbnails / list as the library. A template opens in the
 // sermon editor (its ← comes back here); double-click → the Sermon modal (name, passage, tags, Delete template).
-export function Templates() {
+function Templates() {
   const { sermons, libLayout, libQuery, libFindOpen, status } = useStore(s => ({ sermons: s.sermons, libLayout: s.libLayout, libQuery: s.libQuery, libFindOpen: s.libFindOpen, status: s.status }));
   const findRef = useRef(null); const findOpen = libFindOpen || !!libQuery;
   useEffect(() => { if (libFindOpen && findRef.current) findRef.current.focus(); }, [libFindOpen]);
@@ -41,3 +43,5 @@ export function Templates() {
     <div className="status" style=${{ position: 'fixed', left: 20, bottom: 16 }}>${status}</div>
   </div>`;
 }
+(SB.ui ||= {}).Templates = { Templates };
+})(globalThis.SB ||= {});

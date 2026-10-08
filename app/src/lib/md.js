@@ -1,8 +1,10 @@
 // iA-Writer style markdown: files stay raw; the editor decorates each <p> in place (markers dimmed), so innerText round-trips.
-import { findRefs, formatRef } from '../../../shared/bible.js';
+(function (SB) {
+'use strict';
+const { findRefs, formatRef } = SB.shared.bible;
 
-export const esc = s => String(s).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c])).replace(/ /g, '&nbsp;');
-export function mdLine(s, scripture) {
+const esc = s => String(s).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c])).replace(/ /g, '&nbsp;');
+function mdLine(s, scripture) {
   let m;
   if (scripture && (m = /^(\d{1,3})\s(.*)$/.exec(s))) return { t: 'v', mark: m[1] + ' ', c: m[2] };
   if (/^\s*(-{3,}|\*{3,})\s*$/.test(s)) return { t: 'hr', mark: s, c: '' };
@@ -20,7 +22,7 @@ function plain(s, refs) {
   for (const f of found) { out += esc(s.slice(i, f.index)) + '<span class="xref" data-ref="' + esc(formatRef(f.parsed)) + '">' + esc(f.text) + '</span>'; i = f.index + f.length; }
   return out + esc(s.slice(i));
 }
-export function mdInline(s, edit, refs) {
+function mdInline(s, edit, refs) {
   const mk = m => edit ? '<span style="color:var(--faint)">' + esc(m) + '</span>' : '';
   const re = /(`+)([^`]+?)\1|(\*\*|__)(?=\S)([\s\S]*?\S)\3|(~~)(?=\S)(.*?\S)\5|(?<!\w)(\*|_)(?=\S)([^*_]*?\S)\7(?!\w)/g;
   let out = '', i = 0, m;
@@ -34,7 +36,7 @@ export function mdInline(s, edit, refs) {
   return out + plain(s.slice(i), refs);
 }
 // Rendered markdown for print / podium / docx preview. Flat: lists are <p class="li">, quotes <p class="q">.
-export function mdHtml(text, { scripture = false, refs = false } = {}) {
+function mdHtml(text, { scripture = false, refs = false } = {}) {
   let out = '';
   for (const s of (text || '').split('\n')) {
     const L = mdLine(s, scripture), inl = mdInline(L.c, false, refs);
@@ -52,8 +54,8 @@ const lineStyles = {
   h1: 'font-size:1.6em;font-weight:700;line-height:1.25;margin:.6em 0 .2em;letter-spacing:-0.01em', h2: 'font-size:1.3em;font-weight:600;line-height:1.3;margin:.5em 0 .15em',
   h3: 'font-size:1.1em;font-weight:600;margin:.4em 0 .1em', q: 'padding-left:1em;border-left:2px solid var(--line);color:var(--muted)', ul: 'padding-left:1em', ol: 'padding-left:1em', hr: 'letter-spacing:.3em', p: '', v: ''
 };
-export function decorateAll(el, scripture) { for (const p of el.children) decorate(p, scripture); }
-export function decorate(p, scripture) {
+function decorateAll(el, scripture) { for (const p of el.children) decorate(p, scripture); }
+function decorate(p, scripture) {
   const text = p.textContent, L = mdLine(text, scripture);
   const mk = m => m ? '<span ' + (L.t === 'v' ? 'class="vn"' : 'style="color:var(--faint)"') + '>' + esc(m) + '</span>' : '';
   const html = text ? mk(L.mark) + mdInline(L.c, true) : '<br>';
@@ -68,24 +70,26 @@ export function decorate(p, scripture) {
   if (!hit) { r.selectNodeContents(p); r.collapse(false); }
   sel.removeAllRanges(); sel.addRange(r);
 }
-export function serialize(el) {
+function serialize(el) {
   const kids = Array.from(el.children), txt = k => k.innerText.replace(/\n+$/, '');
   if (!kids.length) return txt(el);
   return kids.map(txt).join('\n');
 }
-export function fill(el, text) {
+function fill(el, text) {
   el.innerHTML = '';
   for (const line of (text || '').split('\n')) { const p = document.createElement('p'); p.style.margin = '0'; if (line) p.textContent = line; else p.appendChild(document.createElement('br')); el.appendChild(p); }
 }
-export function caretTo(el, where) {
+function caretTo(el, where) {
   const r = document.createRange(), s = window.getSelection(), node = where === 'start' ? el.firstElementChild || el : el.lastElementChild || el;
   r.selectNodeContents(node); r.collapse(where === 'start'); s.removeAllRanges(); s.addRange(r);
 }
 // Is the collapsed caret in the first / last line of this editor?
-export function caretEdge(el) {
+function caretEdge(el) {
   const s = window.getSelection(); if (!s.rangeCount || !el.contains(s.anchorNode)) return { first: false, last: false };
   let block = s.anchorNode; while (block && block.parentNode !== el) block = block.parentNode;
   const r = s.getRangeAt(0).cloneRange(), rect = r.getBoundingClientRect(), eb = el.getBoundingClientRect();
   const line = rect.height || 20;
   return { first: block === el.firstElementChild && (rect.top - eb.top) < line * 1.2, last: block === el.lastElementChild && (eb.bottom - rect.bottom) < line * 1.2 };
 }
+(SB.lib ||= {}).md = { esc, mdLine, mdInline, mdHtml, decorateAll, decorate, serialize, fill, caretTo, caretEdge };
+})(globalThis.SB ||= {});

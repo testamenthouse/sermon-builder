@@ -1,19 +1,21 @@
-import { html } from '../lib/html.js';
-import { useEffect, useRef, useState } from 'react';
-import { useStore, set, open, closeSermon, toggleRail, toggleBible, toggleIll, commitMeta, updateOpen, touch, moveBlockTo, removeBlock, deleteSermon, saveNow, flash, toggleFold, toggleDictation } from '../store.js';
-import { Block, Gap } from './Block.js';
-import { BiblePane } from './BiblePane.js';
-import { IllPane } from './IllPane.js';
-import { MobileTop, DrawerScrim } from './Mobile.js';
-import { I, KIND_ICON } from './Icons.js';
-import { kindLabel, kindColor } from '../../../shared/blocks.js';
-import { sermonWords, serializeSermon, slugify } from '../../../shared/format.js';
-import { headingOf, metaLine } from '../lib/print.js';
-import { pointNumbers, outlineTree, groupRange, snapDrop } from '../../../shared/outline.js';
-import { versesPdf } from '../lib/verses.js';
-import { loadBible, lookupNow } from '../lib/bible.js';
-import { docxBlob } from '../lib/docx.js';
-import { download } from '../lib/zip.js';
+(function (SB) {
+'use strict';
+const { html } = SB.lib.html;
+const { useEffect, useRef, useState } = React;
+const { useStore, set, open, closeSermon, toggleRail, toggleBible, toggleIll, commitMeta, updateOpen, touch, moveBlockTo, removeBlock, deleteSermon, saveNow, flash, toggleFold, toggleDictation } = SB.store;
+const { Block, Gap } = SB.ui.Block;
+const { BiblePane } = SB.ui.BiblePane;
+const { IllPane } = SB.ui.IllPane;
+const { MobileTop, DrawerScrim } = SB.ui.Mobile;
+const { I, KIND_ICON } = SB.ui.Icons;
+const { kindLabel, kindColor } = SB.shared.blocks;
+const { sermonWords, serializeSermon, slugify } = SB.shared.format;
+const { headingOf, metaLine } = SB.lib.print;
+const { pointNumbers, outlineTree, groupRange, snapDrop } = SB.shared.outline;
+const { versesPdf } = SB.lib.verses;
+const { loadBible, lookupNow } = SB.lib.bible;
+const { docxBlob } = SB.lib.docx;
+const { download } = SB.lib.zip;
 
 const cap = s => s[0].toUpperCase() + s.slice(1);
 
@@ -92,7 +94,7 @@ function DownloadMenu({ s, onClose }) {
   </div>`;
 }
 
-export function Sermon() {
+function Sermon() {
   const s = useStore(st => st.openPath ? st.sermons.find(x => x.path === st.openPath) : null);
   const { railMin: railPref, biblePane, illPane, status, curBlock, settings, findOpen, find, findIdx, findCount, dictation, narrow, drawer } = useStore(st => ({ railMin: st.railMin, biblePane: st.biblePane, illPane: st.illPane, status: st.status, curBlock: st.curBlock, settings: st.settings, findOpen: st.findOpen, find: st.find, findIdx: st.findIdx, findCount: st.findCount, dictation: st.dictation, narrow: st.narrow, drawer: st.drawer }));
   const railMin = railPref && !narrow, side = biblePane || illPane; // a phone never shows the mini rail: the full rail is the drawer
@@ -173,3 +175,5 @@ export function Sermon() {
     ${illPane && html`<${IllPane} />`}
   </div>`;
 }
+(SB.ui ||= {}).Sermon = { Sermon };
+})(globalThis.SB ||= {});

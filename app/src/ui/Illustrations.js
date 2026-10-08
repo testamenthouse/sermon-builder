@@ -1,14 +1,16 @@
-import { html } from '../lib/html.js';
-import { useEffect, useRef } from 'react';
-import { useStore, set, createIllustration, updateIllustration, renameIllustration, deleteIllustration, leaveIllustrations, openSermon } from '../store.js';
-import { illustrationUses } from '../../../shared/illustrations.js';
-import { MdEditor } from './MdEditor.js';
-import { TagsInput } from './Tags.js';
-import { I } from './Icons.js';
-import { MobileTop, DrawerScrim } from './Mobile.js';
-import { fmtDate } from '../lib/print.js';
+(function (SB) {
+'use strict';
+const { html } = SB.lib.html;
+const { useEffect, useRef } = React;
+const { useStore, set, createIllustration, updateIllustration, renameIllustration, deleteIllustration, leaveIllustrations, openSermon } = SB.store;
+const { illustrationUses } = SB.shared.illustrations;
+const { MdEditor } = SB.ui.MdEditor;
+const { TagsInput } = SB.ui.Tags;
+const { I } = SB.ui.Icons;
+const { MobileTop, DrawerScrim } = SB.ui.Mobile;
+const { fmtDate } = SB.lib.print;
 
-export function Illustrations() {
+function Illustrations() {
   const { ills, illPath, status, sermons, narrow, drawer } = useStore(s => ({ ills: s.illustrations, illPath: s.illPath, status: s.status, sermons: s.sermons, narrow: s.narrow, drawer: s.drawer }));
   const cur = ills.find(i => i.path === illPath) || null; const h1 = useRef(null);
   useEffect(() => { const el = h1.current; if (el && cur && document.activeElement !== el && el.textContent !== cur.meta.title) el.textContent = cur.meta.title; });
@@ -41,3 +43,5 @@ export function Illustrations() {
     </div>
   </div>`;
 }
+(SB.ui ||= {}).Illustrations = { Illustrations };
+})(globalThis.SB ||= {});

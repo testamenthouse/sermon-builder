@@ -1,18 +1,20 @@
 // One external store (useSyncExternalStore). The folder is the only source of truth: sermons are never cached,
 // settings live in sermon.json in the library root (localStorage holds a fallback copy for the first paint).
-import { useRef, useSyncExternalStore } from 'react';
-import { fs } from './fs/index.js';
-import { parseSermon, serializeSermon, normalizeMeta, slugify, newId, parseMeta } from '../../shared/format.js';
-import { illustrationBody } from '../../shared/illustrations.js';
-import { seedTemplates, TEMPLATES_DIR } from '../../shared/templates.js';
-import { isWriterLibrary, WRITER_URL } from '../../shared/library.js';
-import { KIND, DEFAULT_KIND_COLORS } from '../../shared/blocks.js';
-import { groupRange, moveRange, moveStep, canInsert, canSwitch } from '../../shared/outline.js';
-import { loadBible, lookupNow, passageText } from './lib/bible.js';
-import { createDictation, createInserter, backend as dictationBackend } from './lib/dictation.js';
+(function (SB) {
+'use strict';
+const { useRef, useSyncExternalStore } = React;
+const { fs } = SB.fs;
+const { parseSermon, serializeSermon, normalizeMeta, slugify, newId, parseMeta } = SB.shared.format;
+const { illustrationBody } = SB.shared.illustrations;
+const { seedTemplates, TEMPLATES_DIR } = SB.shared.templates;
+const { isWriterLibrary, WRITER_URL } = SB.shared.library;
+const { KIND, DEFAULT_KIND_COLORS } = SB.shared.blocks;
+const { groupRange, moveRange, moveStep, canInsert, canSwitch } = SB.shared.outline;
+const { loadBible, lookupNow, passageText } = SB.lib.bible;
+const { createDictation, createInserter, backend: dictationBackend } = SB.lib.dictation;
 
 const RESERVED = { templates: TEMPLATES_DIR, illustrations: 'Illustrations' };
-export const DEFAULTS = { font: 'sans', size: 18, theme: 'system', podium: 28, colors: DEFAULT_KIND_COLORS };
+const DEFAULTS = { font: 'sans', size: 18, theme: 'system', podium: 28, colors: DEFAULT_KIND_COLORS };
 const ls = (k, d) => { try { return localStorage.getItem(k) ?? d; } catch (e) { return d; } };
 const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
 
@@ -31,12 +33,12 @@ let state = {
 };
 function safeJson(s) { try { return JSON.parse(s) || {}; } catch (e) { return {}; } }
 const subs = new Set();
-export const get = () => state;
-export function set(patch) { const p = typeof patch === 'function' ? patch(state) : patch; if (!p) return; state = { ...state, ...p }; for (const s of subs) s(); }
+const get = () => state;
+function set(patch) { const p = typeof patch === 'function' ? patch(state) : patch; if (!p) return; state = { ...state, ...p }; for (const s of subs) s(); }
 const subscribe = cb => { subs.add(cb); return () => subs.delete(cb); };
 const shallowEq = (a, b) => { if (a === b) return true; if (!a || !b || typeof a !== 'object' || typeof b !== 'object') return false; const ka = Object.keys(a), kb = Object.keys(b); return ka.length === kb.length && ka.every(k => a[k] === b[k]); };
 // Selectors may return fresh objects; the snapshot is kept stable while its values are shallow-equal.
-export function useStore(sel = s => s) {
+function useStore(sel = s => s) {
   const ref = useRef(null);
   const snap = () => { const v = sel(state); if (ref.current !== null && shallowEq(ref.current, v)) return ref.current; ref.current = v; return v; };
   return useSyncExternalStore(subscribe, snap, snap);
@@ -45,7 +47,7 @@ export function useStore(sel = s => s) {
 // ---- theme + content font
 const mq = window.matchMedia('(prefers-color-scheme: dark)');
 const FONTS = { sans: 'Inter, -apple-system, sans-serif', serif: "Georgia, 'Iowan Old Style', 'Times New Roman', serif", mono: "'SF Mono', Menlo, Consolas, monospace", courier: "'Courier Prime', 'Courier New', Courier, monospace" };
-export function applyTheme() {
+function applyTheme() {
   const t = state.settings.theme, v = t === 'dark' || (t !== 'light' && mq.matches) ? 'dark' : 'light';
   const el = document.documentElement;
   if (el.dataset.theme !== v) el.dataset.theme = v;
@@ -58,13 +60,13 @@ NARROW.addEventListener('change', e => set({ narrow: e.matches, drawer: false })
 
 // ---- status
 let flashTimer = null;
-export function flash(msg) { set({ status: msg }); clearTimeout(flashTimer); flashTimer = setTimeout(() => set({ status: '' }), 4000); }
+function flash(msg) { set({ status: msg }); clearTimeout(flashTimer); flashTimer = setTimeout(() => set({ status: '' }), 4000); }
 
 // ---- library
 const dirty = new Set(); let saveTimer = null, writing = 0, lastInput = 0, unwatch = null, lastCfg = null, sigs = new Map();
-export const sermonOf = path => state.sermons.find(s => s.path === path) || null;
-export const open = () => state.openPath ? sermonOf(state.openPath) : null;
-export const touch = () => { lastInput = Date.now(); };
+const sermonOf = path => state.sermons.find(s => s.path === path) || null;
+const open = () => state.openPath ? sermonOf(state.openPath) : null;
+const touch = () => { lastInput = Date.now(); };
 const isMd = p => /\.md$/i.test(p);
 const splitPath = p => { const i = p.lastIndexOf('/'); return i < 0 ? ['', p] : [p.slice(0, i), p.slice(i + 1)]; };
 const isTemplatesDir = d => d.toLowerCase() === 'templates';
@@ -76,7 +78,7 @@ function parseIllustration(path, text) {
   const name = splitPath(path)[1].replace(/\.md$/i, '');
   return { path, meta: { title: String(meta.title || name), tags: Array.isArray(meta.tags) ? meta.tags.map(String) : (typeof meta.tags === 'string' && meta.tags ? meta.tags.split(',').map(s => s.trim()).filter(Boolean) : []), source: String(meta.source || '') }, body: body.trim(), text: t };
 }
-export function illustrationText(ill) {
+function illustrationText(ill) {
   const lines = ['---', 'title: ' + ill.meta.title];
   if (ill.meta.tags.length) lines.push('tags: [' + ill.meta.tags.join(', ') + ']');
   if (ill.meta.source) lines.push('source: ' + ill.meta.source);
@@ -96,7 +98,7 @@ async function writeSettings() {
   const json = JSON.stringify(state.settings); if (json === lastCfg) return; lastCfg = json;
   writing++; try { await fs.write('sermon.json', JSON.stringify({ settings: state.settings }, null, 2) + '\n'); } catch (e) { lastCfg = null; } finally { writing--; }
 }
-export async function loadLibrary(name) {
+async function loadLibrary(name) {
   const list = await fs.list();
   // A Writer library is refused before anything is read, seeded or written, and the folder is forgotten; the gate links to Writer.
   if (isWriterLibrary(list)) { await fs.forget(); set({ booting: false, folderOpen: false, resumable: false, gateStatus: 'This is a Writer library', gateLink: WRITER_URL }); return; }
@@ -123,9 +125,9 @@ export async function loadLibrary(name) {
   loadBible().catch(() => flash('Bible not loaded'));
   fs.mcp().then(mcpCommand => set({ mcpCommand })).catch(() => {});
 }
-export const sortSermons = list => [...list].sort((a, b) => (b.meta.date || '').localeCompare(a.meta.date || '') || a.meta.title.localeCompare(b.meta.title));
+const sortSermons = list => [...list].sort((a, b) => (b.meta.date || '').localeCompare(a.meta.date || '') || a.meta.title.localeCompare(b.meta.title));
 
-export async function boot() {
+async function boot() {
   applyTheme();
   if (!fs.supported) return set({ booting: false, gateStatus: 'Desktop Chrome required' });
   try {
@@ -136,9 +138,9 @@ export async function boot() {
   } catch (e) { console.error(e); }
   set({ booting: false });
 }
-export async function pickFolder() { const r = await fs.pick(); if (!r) return set({ gateStatus: 'Could not open', gateLink: '' }); if (r.error) return set({ gateStatus: r.error, gateLink: '' }); await loadLibrary(r.name); }
-export async function resumeFolder() { const r = fs.resumeClick ? await fs.resumeClick() : await fs.resume(); if (!r || r === 'prompt' || r.error) return set({ gateStatus: (r && r.error) || 'Could not open', gateLink: '' }); await loadLibrary(r.name); }
-export async function logout() {
+async function pickFolder() { const r = await fs.pick(); if (!r) return set({ gateStatus: 'Could not open', gateLink: '' }); if (r.error) return set({ gateStatus: r.error, gateLink: '' }); await loadLibrary(r.name); }
+async function resumeFolder() { const r = fs.resumeClick ? await fs.resumeClick() : await fs.resume(); if (!r || r === 'prompt' || r.error) return set({ gateStatus: (r && r.error) || 'Could not open', gateLink: '' }); await loadLibrary(r.name); }
+async function logout() {
   stopDictation(); clearTimeout(saveTimer); await flushDisk(); stopWatch(); await fs.forget(); dirty.clear(); lastCfg = null;
   set({ folderOpen: false, libName: '', sermons: [], collections: [], illustrations: [], openPath: null, screen: 'library', settingsOpen: false, printMenu: false, sermonModal: null, podium: false, biblePane: false, illPane: false, illReturn: null, resumable: false, gateStatus: '', gateLink: '' });
 }
@@ -147,7 +149,7 @@ export async function logout() {
 function startWatch() { stopWatch(); unwatch = fs.watch(() => reconcile()); }
 function stopWatch() { if (unwatch) unwatch(); unwatch = null; }
 let reconciling = false, reconcileAgain = false;
-export async function reconcile() {
+async function reconcile() {
   if (!state.folderOpen) return;
   if (reconciling) { reconcileAgain = true; return; }
   reconciling = true;
@@ -188,8 +190,8 @@ function keepBlockByIndex(s) {
 }
 
 // ---- saving
-export function markDirty(path) { dirty.add(path); clearTimeout(saveTimer); saveTimer = setTimeout(flushDisk, 800); }
-export async function flushDisk() {
+function markDirty(path) { dirty.add(path); clearTimeout(saveTimer); saveTimer = setTimeout(flushDisk, 800); }
+async function flushDisk() {
   if (!state.folderOpen || !dirty.size) return;
   const paths = [...dirty]; dirty.clear(); writing++;
   try {
@@ -203,8 +205,8 @@ export async function flushDisk() {
   } catch (e) { console.error(e); for (const p of paths) dirty.add(p); flash('Save failed'); }
   finally { writing--; }
 }
-export function saveNow() { if (state.openPath) dirty.add(state.openPath); if (state.illPath) dirty.add(state.illPath); clearTimeout(saveTimer); flushDisk(); }
-export async function setSettings(patch) {
+function saveNow() { if (state.openPath) dirty.add(state.openPath); if (state.illPath) dirty.add(state.illPath); clearTimeout(saveTimer); flushDisk(); }
+async function setSettings(patch) {
   set({ settings: { ...state.settings, ...patch } }); lsSet('sermon.settings', JSON.stringify(state.settings)); applyTheme(); await writeSettings();
 }
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') { clearTimeout(saveTimer); flushDisk(); } });
@@ -218,20 +220,20 @@ function uniquePath(dir, title, except) {
   while (taken((dir ? dir + '/' : '') + name + '.md')) name = base + ' ' + n++;
   return (dir ? dir + '/' : '') + name + '.md';
 }
-export function openSermon(path) { const s = sermonOf(path); if (!s) return; set({ screen: 'sermon', openPath: path, illReturn: null, drawer: false, curBlock: s.blocks[0] ? s.blocks[0].id : null, findOpen: false, find: '', podium: false, kindMenu: null }); window.scrollTo(0, 0); }
+function openSermon(path) { const s = sermonOf(path); if (!s) return; set({ screen: 'sermon', openPath: path, illReturn: null, drawer: false, curBlock: s.blocks[0] ? s.blocks[0].id : null, findOpen: false, find: '', podium: false, kindMenu: null }); window.scrollTo(0, 0); }
 // Closing a template lands on the Templates screen, a sermon on the library.
-export function closeSermon() { stopDictation(); const was = open(); clearTimeout(saveTimer); flushDisk(); set({ screen: was && was.meta.template ? 'templates' : 'library', openPath: null, curBlock: null, podium: false, drawer: false, findOpen: false, kindMenu: null, biblePaneWasOpen: undefined }); if (document.fullscreenElement) document.exitFullscreen().catch(() => {}); }
-export function updateSermon(path, fn) {
+function closeSermon() { stopDictation(); const was = open(); clearTimeout(saveTimer); flushDisk(); set({ screen: was && was.meta.template ? 'templates' : 'library', openPath: null, curBlock: null, podium: false, drawer: false, findOpen: false, kindMenu: null, biblePaneWasOpen: undefined }); if (document.fullscreenElement) document.exitFullscreen().catch(() => {}); }
+function updateSermon(path, fn) {
   const i = state.sermons.findIndex(s => s.path === path); if (i < 0) return;
   const s = { ...state.sermons[i], meta: { ...state.sermons[i].meta }, blocks: state.sermons[i].blocks.map(b => ({ ...b, flags: [...(b.flags || [])] })) };
   fn(s);
   const sermons = state.sermons.slice(); sermons[i] = s;
   set({ sermons }); markDirty(path);
 }
-export const updateOpen = fn => { if (state.openPath) { touch(); updateSermon(state.openPath, fn); } };
+const updateOpen = fn => { if (state.openPath) { touch(); updateSermon(state.openPath, fn); } };
 
 // templatePath = the Templates/ file to copy blocks from ('' = blank); template = make a template rather than a sermon.
-export async function createSermon({ title, collection = '', date = '', passage = '', status = 'draft', tags = [], length = 0, templatePath = '', template = false }) {
+async function createSermon({ title, collection = '', date = '', passage = '', status = 'draft', tags = [], length = 0, templatePath = '', template = false }) {
   const t = String(title || '').trim(); if (!t || (!template && !String(collection || '').trim())) return null; // every sermon lives in a collection
   let blocks = [];
   if (templatePath) { const src = sermonOf(templatePath); if (src) blocks = src.blocks.map(b => ({ ...b, id: newId(), flags: [...(b.flags || [])] })); }
@@ -251,7 +253,7 @@ export async function createSermon({ title, collection = '', date = '', passage 
 const reconcileSoon = () => new Promise(r => setTimeout(() => { reconcile(); r(); }, 50));
 
 // Title / collection / date / passage / status / tags / length from the Sermon modal. Title or collection changes move the file.
-export async function commitMeta(path, patch) {
+async function commitMeta(path, patch) {
   const s = sermonOf(path); if (!s) return;
   const meta = normalizeMeta({ ...s.meta, ...patch });
   if (!meta.template && !meta.collection) meta.collection = s.meta.collection; // never out of a collection
@@ -272,7 +274,7 @@ export async function commitMeta(path, patch) {
   set({ sermons: sortSermons(state.sermons.map(x => x.path === path ? next : x)), collections, openPath: state.openPath === path ? next.path : state.openPath });
   await reconcileSoon();
 }
-export async function deleteSermon(path) {
+async function deleteSermon(path) {
   dirty.delete(path); writing++;
   try { await fs.remove(path); } catch (e) { console.error(e); flash('Save failed'); writing--; return; }
   writing--;
@@ -281,18 +283,18 @@ export async function deleteSermon(path) {
   if (wasOpen) closeSermon();
   reconcileSoon();
 }
-export async function setCollectionColor(name, color) {
+async function setCollectionColor(name, color) {
   const collections = state.collections.map(s => s.name === name ? { ...s, color } : s); set({ collections });
   writing++; try { if (color) await fs.write(name + '/collection.json', JSON.stringify({ color }, null, 2) + '\n'); else await fs.remove(name + '/collection.json').catch(() => {}); await fs.remove(name + '/series.json').catch(() => {}); } catch (e) {} finally { writing--; }
 }
 // A collection is a folder (every sermon lives in one): make it empty, it shows at once with its own + for the first sermon.
-export async function createCollection(name, color = '') {
+async function createCollection(name, color = '') {
   const t = slugify(name); if (!t || t === 'Untitled' || state.collections.some(s => s.name === t) || isTemplatesDir(t) || isIllDir(t)) return false;
   writing++; try { await fs.mkdir(t); if (color) await fs.write(t + '/collection.json', JSON.stringify({ color }, null, 2) + '\n'); } catch (e) { writing--; flash('Save failed'); return false; } writing--;
   set({ collections: [...state.collections, { name: t, color }].sort((a, b) => a.name.localeCompare(b.name)) });
   reconcileSoon(); return true;
 }
-export async function renameCollection(from, to) {
+async function renameCollection(from, to) {
   const t = slugify(to); if (!t || t === from || t === 'Untitled' || state.collections.some(s => s.name === t) || isTemplatesDir(t) || isIllDir(t)) return false;
   clearTimeout(saveTimer); await flushDisk(); writing++;
   try { await fs.rename(from, t); } catch (e) { writing--; flash('Save failed'); return false; }
@@ -302,7 +304,7 @@ export async function renameCollection(from, to) {
   set({ sermons, collections: state.collections.map(s => s.name === from ? { ...s, name: t } : s).sort((a, b) => a.name.localeCompare(b.name)), openPath: state.openPath && state.openPath.startsWith(from + '/') ? t + state.openPath.slice(from.length) : state.openPath });
   clearTimeout(saveTimer); await flushDisk(); await reconcileSoon(); return true;
 }
-export async function deleteCollection(name) {
+async function deleteCollection(name) {
   clearTimeout(saveTimer); await flushDisk(); writing++;
   try { await fs.remove(name); } catch (e) { writing--; flash('Save failed'); return; }
   writing--;
@@ -314,7 +316,7 @@ export async function deleteCollection(name) {
 
 // ---- blocks
 const blank = (kind, heading = '') => ({ id: newId(), kind, heading, body: '', flags: [], label: '' });
-export function insertBlock(index, kind, extra = {}) {
+function insertBlock(index, kind, extra = {}) {
   const cur = open(); if (cur && !canInsert(cur.blocks, index, kind)) { set({ kindMenu: null }); return null; }
   const b = { ...blank(kind), ...extra, id: newId() };
   updateOpen(s => { s.blocks.splice(Math.max(0, Math.min(index, s.blocks.length)), 0, b); });
@@ -322,56 +324,56 @@ export function insertBlock(index, kind, extra = {}) {
   return b.id;
 }
 // Points are containers: delete, move and duplicate carry their group (shared/outline.js).
-export function removeBlock(id) {
+function removeBlock(id) {
   const s = open(); if (!s) return; const r = groupRange(s.blocks, id); if (!r) return;
   const [i, e] = r, prev = s.blocks[i - 1] || s.blocks[e] || null;
   updateOpen(x => { x.blocks.splice(i, e - i); });
   set({ curBlock: prev ? prev.id : null, focusReq: prev ? { id: prev.id, where: 'end' } : null, confirm: null });
 }
-export function moveBlock(id, delta) {
+function moveBlock(id, delta) {
   updateOpen(s => { s.blocks = moveStep(s.blocks, id, delta); });
 }
-export function moveBlockTo(id, index) {
+function moveBlockTo(id, index) {
   updateOpen(s => { s.blocks = moveRange(s.blocks, id, index); });
 }
-export function duplicateBlock(id) {
+function duplicateBlock(id) {
   let nid = null;
   updateOpen(s => { const r = groupRange(s.blocks, id); if (!r) return; const [i, e] = r; const copies = s.blocks.slice(i, e).map(b => ({ ...b, id: newId(), flags: [...b.flags] })); nid = copies[0].id; s.blocks.splice(e, 0, ...copies); });
   if (nid) set({ curBlock: nid, focusReq: { id: nid, where: 'end' } });
 }
-export function setKind(id, kind) {
+function setKind(id, kind) {
   const cur = open(); if (!cur) return; const i = cur.blocks.findIndex(b => b.id === id); if (i < 0) return;
   if (!canSwitch(cur.blocks, i, kind)) { set({ kindMenu: null }); return; }
   updateOpen(s => { const b = s.blocks.find(x => x.id === id); if (!b) return; if (kind !== 'custom' && !KIND[kind].heading) b.heading = ''; if (kind === 'custom') b.label = b.label || ''; b.kind = kind; });
   set({ kindMenu: null, focusReq: { id, where: kind === 'custom' ? 'label' : KIND[kind].heading && kind !== 'quote' ? 'heading' : 'start' } });
 }
-export function toggleFold(id) { set(st => ({ fold: { ...st.fold, [id]: !st.fold[id] } })); }
-export function toggleFlag(id, flag) {
+function toggleFold(id) { set(st => ({ fold: { ...st.fold, [id]: !st.fold[id] } })); }
+function toggleFlag(id, flag) {
   updateOpen(s => { const b = s.blocks.find(x => x.id === id); if (!b) return; b.flags = b.flags.includes(flag) ? b.flags.filter(f => f !== flag) : [...b.flags, flag]; });
 }
-export function setBlock(id, patch) { updateOpen(s => { const b = s.blocks.find(x => x.id === id); if (b) Object.assign(b, patch); }); }
+function setBlock(id, patch) { updateOpen(s => { const b = s.blocks.find(x => x.id === id); if (b) Object.assign(b, patch); }); }
 // Scripture: resolve the reference and, when the body is empty, fill it with KJV text.
-export function fillScripture(id) {
+function fillScripture(id) {
   const s = open(); if (!s) return false; const b = s.blocks.find(x => x.id === id); if (!b) return false;
   const r = lookupNow(b.heading); if (!r) return false;
   updateOpen(x => { const y = x.blocks.find(z => z.id === id); y.heading = r.ref; if (!y.body.trim()) y.body = passageText(r.verses); });
   return true;
 }
 // Reference edited in place: keep the raw text while typing, and whenever it resolves to a different passage than before, replace the body with that KJV text.
-export function setReference(id, heading) {
+function setReference(id, heading) {
   const s = open(); if (!s) return; const b = s.blocks.find(x => x.id === id); if (!b) return;
   const prev = lookupNow(b.heading), next = lookupNow(heading);
   const refill = !!next && (!prev || prev.ref !== next.ref || !b.body.trim());
   updateOpen(x => { const y = x.blocks.find(z => z.id === id); y.heading = heading; if (refill) y.body = passageText(next.verses); });
 }
-export function insertScripture(ref, vs, afterId) {
+function insertScripture(ref, vs, afterId) {
   const s = open(); if (!s) return;
   const i = afterId ? s.blocks.findIndex(b => b.id === afterId) : s.blocks.length - 1;
   return insertBlock(i + 1, 'scripture', { heading: ref, body: passageText(vs) });
 }
 
 // ---- illustrations library
-export async function createIllustration({ title, tags = [], source = '', body = '' }) {
+async function createIllustration({ title, tags = [], source = '', body = '' }) {
   const t = String(title || '').trim(); if (!t) return null;
   const path = uniquePath(RESERVED.illustrations, t);
   const ill = { path, meta: { title: t, tags, source }, body, text: '' }; ill.text = illustrationText(ill);
@@ -379,12 +381,12 @@ export async function createIllustration({ title, tags = [], source = '', body =
   set({ illustrations: [...state.illustrations, ill].sort((a, b) => a.meta.title.localeCompare(b.meta.title)) });
   reconcileSoon(); return path;
 }
-export function updateIllustration(path, fn) {
+function updateIllustration(path, fn) {
   const i = state.illustrations.findIndex(x => x.path === path); if (i < 0) return;
   const ill = { ...state.illustrations[i], meta: { ...state.illustrations[i].meta, tags: [...state.illustrations[i].meta.tags] } }; fn(ill);
   const illustrations = state.illustrations.slice(); illustrations[i] = ill; touch(); set({ illustrations }); markDirty(path);
 }
-export async function renameIllustration(path, title) {
+async function renameIllustration(path, title) {
   const ill = state.illustrations.find(x => x.path === path); const t = String(title || '').trim(); if (!ill || !t || t === ill.meta.title) return;
   clearTimeout(saveTimer); await flushDisk();
   const target = uniquePath(RESERVED.illustrations, t, path); const next = { ...ill, path: target, meta: { ...ill.meta, title: t } }; next.text = illustrationText(next);
@@ -392,7 +394,7 @@ export async function renameIllustration(path, title) {
   set({ illustrations: state.illustrations.map(x => x.path === path ? next : x).sort((a, b) => a.meta.title.localeCompare(b.meta.title)), illPath: state.illPath === path ? target : state.illPath });
   reconcileSoon();
 }
-export async function deleteIllustration(path) {
+async function deleteIllustration(path) {
   dirty.delete(path); writing++; try { await fs.remove(path); } catch (e) { writing--; flash('Save failed'); return; } writing--;
   set({ illustrations: state.illustrations.filter(x => x.path !== path), illPath: state.illPath === path ? null : state.illPath, confirm: null });
   reconcileSoon();
@@ -401,7 +403,7 @@ export async function deleteIllustration(path) {
 // ---- dictation: words land in the block that has focus (else the current block) through lib/dictation.js
 let dict = null, noteTimer = null;
 const inserter = createInserter(() => (state.curBlock && document.querySelector('[data-bid="' + state.curBlock + '"] .body')) || document.querySelector('.blocks .body'));
-export function startDictation() {
+function startDictation() {
   if (state.dictation || state.screen !== 'sermon' || !state.openPath || state.podium) return false;
   if (!dictationBackend()) { set({ alert: 'Dictation requires Google Chrome.' }); return false; }
   if (!inserter.begin()) return false;
@@ -416,19 +418,19 @@ export function startDictation() {
   dict.start(navigator.language);
   return true;
 }
-export function stopDictation() { if (dict) dict.stop(); }
-export function toggleDictation() { if (state.dictation) stopDictation(); else startDictation(); }
+function stopDictation() { if (dict) dict.stop(); }
+function toggleDictation() { if (state.dictation) stopDictation(); else startDictation(); }
 
 // ---- ui bits
-export function toggleRail() { const v = !state.railMin; lsSet('sermon.rail', v ? 'min' : 'max'); set({ railMin: v }); }
+function toggleRail() { const v = !state.railMin; lsSet('sermon.rail', v ? 'min' : 'max'); set({ railMin: v }); }
 // On a narrow screen the rail is a drawer over the page: opened from the top-left list button, closed by its scrim or by choosing a row.
-export function toggleDrawer(v) { set({ drawer: v === undefined ? !state.drawer : !!v }); }
+function toggleDrawer(v) { set({ drawer: v === undefined ? !state.drawer : !!v }); }
 // One side pane at a time: opening Bible closes Illustrations and the other way round.
-export function toggleBible() { const v = !state.biblePane; lsSet('sermon.bible', v ? 'open' : 'closed'); if (v) lsSet('sermon.ill', 'closed'); set({ biblePane: v, illPane: v ? false : state.illPane }); }
-export function toggleIll(force) { const v = force === undefined ? !state.illPane : !!force; lsSet('sermon.ill', v ? 'open' : 'closed'); if (v) lsSet('sermon.bible', 'closed'); set({ illPane: v, biblePane: v ? false : state.biblePane }); }
+function toggleBible() { const v = !state.biblePane; lsSet('sermon.bible', v ? 'open' : 'closed'); if (v) lsSet('sermon.ill', 'closed'); set({ biblePane: v, illPane: v ? false : state.illPane }); }
+function toggleIll(force) { const v = force === undefined ? !state.illPane : !!force; lsSet('sermon.ill', v ? 'open' : 'closed'); if (v) lsSet('sermon.bible', 'closed'); set({ illPane: v, biblePane: v ? false : state.biblePane }); }
 // Put a library illustration into the sermon: fill the current block when it is an empty illustration block
 // (templates leave those), otherwise add an illustration block after the current one.
-export function useIllustration(ill) {
+function useIllustration(ill) {
   const s = open(); if (!s) return null;
   const cur = s.blocks.find(b => b.id === state.curBlock), body = illustrationBody(ill), title = ill.meta.title;
   if (cur && cur.kind === 'illustration' && !cur.body.trim()) { touch(); setBlock(cur.id, { heading: cur.heading.trim() || title, body }); set({ focusReq: { id: cur.id, where: 'end' } }); return cur.id; }
@@ -436,16 +438,18 @@ export function useIllustration(ill) {
   const id = insertBlock(i + 1, 'illustration', { heading: title, body }); set({ focusReq: { id, where: 'end' } }); return id;
 }
 // The Illustrations screen from inside a sermon remembers the way back.
-export function openIllustrations(path) { clearTimeout(saveTimer); flushDisk(); set({ screen: 'illustrations', illPath: path || state.illPath, illReturn: state.openPath, drawer: false, kindMenu: null, findOpen: false, podium: false }); window.scrollTo(0, 0); }
-export function leaveIllustrations() { const back = state.illReturn; set({ illReturn: null, illPath: null, drawer: false }); if (back && sermonOf(back)) openSermon(back); else set({ screen: 'library', openPath: null }); }
-export function setLibView(v) { lsSet('sermon.libview', v); set({ libView: v }); }
-export function setLibLayout(v) { lsSet('sermon.liblayout', v); set({ libLayout: v }); }
-export function closeLibFind() { set({ libFindOpen: false, libQuery: '' }); }
+function openIllustrations(path) { clearTimeout(saveTimer); flushDisk(); set({ screen: 'illustrations', illPath: path || state.illPath, illReturn: state.openPath, drawer: false, kindMenu: null, findOpen: false, podium: false }); window.scrollTo(0, 0); }
+function leaveIllustrations() { const back = state.illReturn; set({ illReturn: null, illPath: null, drawer: false }); if (back && sermonOf(back)) openSermon(back); else set({ screen: 'library', openPath: null }); }
+function setLibView(v) { lsSet('sermon.libview', v); set({ libView: v }); }
+function setLibLayout(v) { lsSet('sermon.liblayout', v); set({ libLayout: v }); }
+function closeLibFind() { set({ libFindOpen: false, libQuery: '' }); }
 // A new sermon needs a collection to land in: with none yet, the Collection modal comes first.
-export function newSermon(extra = {}) { if (!state.collections.length) return set({ collectionModal: { create: true } }); set({ sermonModal: { create: true, ...extra } }); }
-export function openTemplates() { set({ screen: 'templates', openPath: null, settingsOpen: false }); window.scrollTo(0, 0); }
-export function newTemplate() { set({ nameDialog: { placeholder: 'Template name', onSave: async t => { const p = await createSermon({ title: t, template: true }); if (p) openSermon(p); } } }); }
-export function closeMenus() { set({ printMenu: false, settingsOpen: false, colorsOpen: false, confirm: null, sermonModal: null, collectionModal: null, nameDialog: null, newDialog: false, kindMenu: null, alert: null }); }
-export const stop = e => e.stopPropagation();
+function newSermon(extra = {}) { if (!state.collections.length) return set({ collectionModal: { create: true } }); set({ sermonModal: { create: true, ...extra } }); }
+function openTemplates() { set({ screen: 'templates', openPath: null, settingsOpen: false }); window.scrollTo(0, 0); }
+function newTemplate() { set({ nameDialog: { placeholder: 'Template name', onSave: async t => { const p = await createSermon({ title: t, template: true }); if (p) openSermon(p); } } }); }
+function closeMenus() { set({ printMenu: false, settingsOpen: false, colorsOpen: false, confirm: null, sermonModal: null, collectionModal: null, nameDialog: null, newDialog: false, kindMenu: null, alert: null }); }
+const stop = e => e.stopPropagation();
 // Headless QA hook: window.__sb.setLibrary(handle) then window.__sb.loadLibrary(name).
 if (typeof window !== 'undefined') window.__sb = Object.assign(window.__sb || {}, { loadLibrary, get, set, reconcile, flushDisk, startDictation, stopDictation });
+SB.store = { DEFAULTS, get, set, useStore, applyTheme, flash, sermonOf, open, touch, illustrationText, loadLibrary, sortSermons, boot, pickFolder, resumeFolder, logout, reconcile, markDirty, flushDisk, saveNow, setSettings, openSermon, closeSermon, updateSermon, updateOpen, createSermon, commitMeta, deleteSermon, setCollectionColor, createCollection, renameCollection, deleteCollection, insertBlock, removeBlock, moveBlock, moveBlockTo, duplicateBlock, setKind, toggleFold, toggleFlag, setBlock, fillScripture, setReference, insertScripture, createIllustration, updateIllustration, renameIllustration, deleteIllustration, startDictation, stopDictation, toggleDictation, toggleRail, toggleDrawer, toggleBible, toggleIll, useIllustration, openIllustrations, leaveIllustrations, setLibView, setLibLayout, closeLibFind, newSermon, openTemplates, newTemplate, closeMenus, stop };
+})(globalThis.SB ||= {});

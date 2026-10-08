@@ -1,13 +1,15 @@
 // Verse list for the media team: every scripture block's reference in order, then references mentioned in passing.
 // Verse text is only parsed so an empty scripture block can still be named from the KJV lookup. Pure: the KJV lookup and the meta line come from the caller.
-import { mdLine } from './md.js';
-import { findRefs, formatRef, parseRef } from '../../../shared/bible.js';
+(function (SB) {
+'use strict';
+const { mdLine } = SB.lib.md;
+const { findRefs, formatRef, parseRef } = SB.shared.bible;
 
 // "Psalm 23:1-2" and "Psalm 23:1–2" are the same reference.
 const key = r => { const p = parseRef(r); return (p ? formatRef(p) : String(r)).toLowerCase(); };
-import { Pdf } from './pdf.js';
+const { Pdf } = SB.lib.pdf;
 
-export function verseEntries(sermon, { lookup } = {}) {
+function verseEntries(sermon, { lookup } = {}) {
   const entries = [], seen = new Set();
   for (const b of sermon.blocks) {
     if (b.kind !== 'scripture') continue;
@@ -26,7 +28,7 @@ export function verseEntries(sermon, { lookup } = {}) {
   return { entries, mentioned };
 }
 
-export function versesPdf(sermon, { lookup, metaLine = '' } = {}) {
+function versesPdf(sermon, { lookup, metaLine = '' } = {}) {
   const { entries, mentioned } = verseEntries(sermon, { lookup });
   const title = sermon.meta.title || 'Untitled';
   const doc = new Pdf({ footer: title + ' · Verses' });
@@ -39,3 +41,5 @@ export function versesPdf(sermon, { lookup, metaLine = '' } = {}) {
   if (mentioned.length) { doc.space(10); doc.rule(); doc.space(4); doc.text('Also referenced', { size: 10, color: '0.45 0.45 0.45', after: 4 }); mentioned.forEach(r => doc.text(r, { size: 12, color: '0.3 0.3 0.3', after: 3 })); }
   return new Blob([doc.bytes()], { type: 'application/pdf' });
 }
+(SB.lib ||= {}).verses = { verseEntries, versesPdf };
+})(globalThis.SB ||= {});

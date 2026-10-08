@@ -1,5 +1,7 @@
 // Browser adapter: File System Access API. The folder handle is remembered in IndexedDB; nothing else is stored.
 // Same interface as the Electron bridge (see ../../../desktop/src/preload.js). Paths are relative, forward-slashed.
+(function (SB) {
+'use strict';
 const DB = 'sermon', STORE = 'kv', KEY = 'lib';
 let root = null;
 
@@ -35,7 +37,7 @@ async function copyDir(from, to) {
   }
 }
 
-export const fsa = {
+const fsa = {
   kind: 'fsa',
   supported: typeof window !== 'undefined' && typeof window.showDirectoryPicker === 'function',
   async pick() { try { root = await window.showDirectoryPicker({ mode: 'readwrite' }); } catch (e) { return null; } await kv('put', root); return { name: root.name }; },
@@ -84,3 +86,5 @@ export const fsa = {
   // Headless QA: hand the adapter a directory handle (e.g. OPFS root) without the picker.
   __setLibrary(h) { root = h; }
 };
+SB.fsa = { fsa };
+})(globalThis.SB ||= {});

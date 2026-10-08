@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { isWriterLibrary } from '../shared/library.js';
+import { library } from '../shared/node.js';
+const { isWriterLibrary } = library;
 
 const f = (path, kind = 'file') => ({ path, kind, mtime: 0, size: 0 });
 test('a sermon library is not a Writer library', () => {

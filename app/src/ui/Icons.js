@@ -1,4 +1,6 @@
-import { html } from '../lib/html.js';
+(function (SB) {
+'use strict';
+const { html } = SB.lib.html;
 const P = {
   'arrow-left': 'M19 12H5M12 19l-7-7 7-7', plus: 'M12 5v14M5 12h14', printer: 'M6 9V2h12v7M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2M6 14h12v8H6z',
   download: 'M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3', settings: 'M12 15a3 3 0 100-6 3 3 0 000 6zM19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z',
@@ -15,7 +17,9 @@ const P = {
   mic: 'M12 2a3 3 0 00-3 3v7a3 3 0 006 0V5a3 3 0 00-3-3zM19 10v2a7 7 0 01-14 0v-2M12 19v3',
   moon: 'M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z', type: 'M4 7V4h16v3M9 20h6M12 4v16', up: 'M12 19V5M5 12l7-7 7 7', down: 'M12 5v14M19 12l-7 7-7-7'
 };
-export function I({ name, size = 16, ...rest }) {
+function I({ name, size = 16, ...rest }) {
   return html`<svg width=${size} height=${size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" ...${rest}><path d=${P[name] || P.box} /></svg>`;
 }
-export const KIND_ICON = { intro: 'flag', scripture: 'book', illustration: 'bulb', application: 'check', quote: 'quote', transition: 'arrow-right', conclusion: 'square', prayer: 'hands', invitation: 'heart', question: 'help', note: 'note', custom: 'box', text: 'align', point: 'square' };
+const KIND_ICON = { intro: 'flag', scripture: 'book', illustration: 'bulb', application: 'check', quote: 'quote', transition: 'arrow-right', conclusion: 'square', prayer: 'hands', invitation: 'heart', question: 'help', note: 'note', custom: 'box', text: 'align', point: 'square' };
+(SB.ui ||= {}).Icons = { I, KIND_ICON };
+})(globalThis.SB ||= {});

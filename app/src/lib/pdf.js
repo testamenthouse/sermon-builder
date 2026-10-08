@@ -1,11 +1,13 @@
 // Minimal PDF writer: Letter pages, Helvetica / Helvetica-Bold (built into every reader, nothing embedded),
 // word wrapping from the real font metrics, page breaks, a footer. No library.
+(function (SB) {
+'use strict';
 const W_R = [278, 278, 355, 556, 556, 889, 667, 191, 333, 333, 389, 584, 278, 333, 278, 278, 556, 556, 556, 556, 556, 556, 556, 556, 556, 556, 278, 278, 584, 584, 584, 556, 1015, 667, 667, 722, 722, 667, 611, 778, 722, 278, 500, 667, 556, 833, 722, 778, 667, 778, 722, 667, 611, 722, 667, 944, 667, 667, 611, 278, 278, 278, 469, 556, 333, 556, 556, 500, 556, 556, 278, 556, 556, 222, 222, 500, 222, 833, 556, 556, 556, 556, 333, 500, 278, 556, 500, 722, 500, 500, 500, 334, 260, 334, 584];
 const W_B = [278, 333, 474, 556, 556, 889, 722, 238, 333, 333, 389, 584, 278, 333, 278, 278, 556, 556, 556, 556, 556, 556, 556, 556, 556, 556, 333, 333, 584, 584, 584, 611, 975, 722, 722, 722, 722, 667, 611, 778, 722, 278, 556, 722, 611, 833, 722, 778, 667, 778, 722, 667, 611, 722, 667, 944, 667, 667, 611, 333, 278, 333, 584, 556, 333, 556, 611, 556, 611, 556, 333, 611, 611, 278, 278, 556, 278, 889, 611, 611, 611, 611, 389, 556, 333, 611, 556, 778, 556, 556, 500, 389, 280, 389, 584];
 // WinAnsi code points for the characters KJV text and headings use beyond ASCII; anything else becomes '?'.
 const WIN = { '‘': 145, '’': 146, '“': 147, '”': 148, '–': 150, '—': 151, '…': 133, '•': 149, ' ': 32 };
 const WIN_W = { 145: [222, 278], 146: [222, 278], 147: [333, 500], 148: [333, 500], 150: [556, 556], 151: [1000, 1000], 133: [1000, 1000], 149: [350, 350] };
-export const FONT_WIDTHS = { regular: W_R, bold: W_B };
+const FONT_WIDTHS = { regular: W_R, bold: W_B };
 
 function codes(text) {
   const out = [];
@@ -20,7 +22,7 @@ function width(text, bold, size) {
 const pdfStr = text => '(' + codes(text).map(c => (c === 40 || c === 41 || c === 92 ? '\\' : '') + String.fromCharCode(c)).join('') + ')';
 const n2 = n => (Math.round(n * 100) / 100).toString();
 
-export class Pdf {
+class Pdf {
   constructor({ width: w = 612, height: h = 792, margin = 54, footer = '' } = {}) { this.w = w; this.h = h; this.m = margin; this.footer = footer; this.pages = []; this.newPage(); }
   newPage() { this.pages.push([]); this.y = this.h - this.m; }
   get page() { return this.pages[this.pages.length - 1]; }
@@ -74,3 +76,5 @@ export class Pdf {
     const b = new Uint8Array(out.length); for (let i = 0; i < out.length; i++) b[i] = out.charCodeAt(i) & 255; return b;
   }
 }
+(SB.lib ||= {}).pdf = { FONT_WIDTHS, Pdf };
+})(globalThis.SB ||= {});

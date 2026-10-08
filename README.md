@@ -4,6 +4,15 @@ A minimalist, offline sermon editor for the Mac (and Chrome). You write a sermon
 
 **Try it now:** https://testamenthouse.github.io/sermon-builder/ (Google Chrome, then pick any folder)
 
+**Or run it yourself, no technical knowledge needed:** download the folder and double-click `index.html`. That is the whole setup. There is nothing to install, no build step and no server, and your sermons never leave your machine.
+
+1. Click the green **Code** button at the top of this page, then **Download ZIP**.
+2. Unzip it anywhere you like.
+3. Open the folder and double-click `index.html`. If it opens in another browser, right-click it and choose **Open With → Google Chrome**.
+4. Click **Open folder** and pick where your sermons should live.
+
+The desktop app under [Get it](#get-it) is the same page in a window, with on-device dictation and automatic updates.
+
 **There is no database.** The only storage is the folder you choose. The whole app runs off that folder: every sermon, collection, template, illustration and setting is a file in it, read and written directly. No accounts, no server, no analytics. Everything stays on your machine.
 
 - [What it does](#what-it-does)
@@ -40,7 +49,7 @@ A minimalist, offline sermon editor for the Mac (and Chrome). You write a sermon
 
 https://testamenthouse.github.io/sermon-builder/
 
-Or serve this folder with any static server (see [Running the web version](#running-the-web-version)). Chrome is required because the app opens a folder on your disk through the File System Access API. Other browsers show a "Google Chrome required" screen.
+Or download this repo and double-click `index.html` (see [Running the web version](#running-the-web-version)). Chrome is required because the app opens a folder on your disk through the File System Access API. Other browsers show a "Google Chrome required" screen.
 
 Phones and tablets can read a library over the web version when the layout collapses to one column, but they cannot open a folder. Writing happens on a desktop.
 
@@ -234,26 +243,26 @@ Installed apps check GitHub Releases on launch and every hour, download quietly,
 
 ## Running the web version
 
-There is no build step. The browser runs the source as plain ES modules, with React vendored in `vendor/`.
+There is no build step. Double-click `index.html` and Chrome runs the source as it is: every file is a classic script, loaded in order by `index.html`, with React and htm vendored in `vendor/` and the King James Bible in `data/kjv/kjv.js`. A static server works too, and GitHub Pages serves this repo from its root, so the published web version is https://testamenthouse.github.io/sermon-builder/
 
 ```sh
 npm install
-npm run dev        # serves this folder on http://localhost:5188
+npm run dev        # serves this folder on http://localhost:5188, if you prefer a server
 ```
 
-Open it in Google Chrome. Any static server over the repo folder works the same. GitHub Pages serves this repo from its root, so the published web version is https://testamenthouse.github.io/sermon-builder/
+Adding a file means adding its `<script>` tag to `index.html` after the files it reads from; `npm test` checks the order. Node code (the MCP server and the tests) loads the same files through `shared/node.js` and `app/src/lib/node.js`.
 
 ```sh
 npm test           # file format round-trips, Bible lookup, outline, dictation, MCP end to end
-npm run vendor     # refresh vendor/ from esm.sh after changing a version in scripts/vendor.js
-npm run kjv        # rebuild data/kjv/kjv.json
+npm run vendor     # refresh vendor/ from unpkg after changing a version in scripts/vendor.js
+npm run kjv        # rebuild data/kjv/kjv.js
 ```
 
 ## Repository layout
 
 ```
-index.html      The app page. Serve the repo folder and it runs.
-app/            The UI: React through htm tagged templates, no JSX, no build
+index.html      The app page. Double-click it and it runs.
+app/            The UI: React through htm tagged templates, no JSX, no build, no modules
 shared/         Pure modules shared by the app, MCP server and tests (file format, Bible, outline, templates)
 data/kjv/       The King James Bible, 66 books, 31,102 verses (public domain)
 mcp/            MCP server for Claude

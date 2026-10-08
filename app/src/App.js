@@ -1,16 +1,18 @@
-import { html } from './lib/html.js';
-import { useEffect } from 'react';
-import { useStore, set, boot, saveNow, closeMenus, get, toggleBible, toggleIll, closeLibFind, toggleDictation, stopDictation } from './store.js';
-import { Gate, Blocked, GitHubLink } from './ui/Gate.js';
-import { supported } from './lib/dictation.js';
-import { Library } from './ui/Library.js';
-import { Sermon } from './ui/Sermon.js';
-import { Illustrations } from './ui/Illustrations.js';
-import { Templates } from './ui/Templates.js';
-import { Podium } from './ui/Podium.js';
-import { Confirm, SermonModal, CollectionModal, PrintMenu, Settings, NameDialog, KindColors, Alert, DictationBar, DictationStop } from './ui/Overlays.js';
+(function (SB) {
+'use strict';
+const { html } = SB.lib.html;
+const { useEffect } = React;
+const { useStore, set, boot, saveNow, closeMenus, get, toggleBible, toggleIll, closeLibFind, toggleDictation, stopDictation } = SB.store;
+const { Gate, Blocked, GitHubLink } = SB.ui.Gate;
+const { supported } = SB.lib.dictation;
+const { Library } = SB.ui.Library;
+const { Sermon } = SB.ui.Sermon;
+const { Illustrations } = SB.ui.Illustrations;
+const { Templates } = SB.ui.Templates;
+const { Podium } = SB.ui.Podium;
+const { Confirm, SermonModal, CollectionModal, PrintMenu, Settings, NameDialog, KindColors, Alert, DictationBar, DictationStop } = SB.ui.Overlays;
 
-export function App() {
+function App() {
   const { booting, folderOpen, screen, podium } = useStore(s => ({ booting: s.booting, folderOpen: s.folderOpen, screen: s.screen, podium: s.podium }));
   useEffect(() => { if (supported()) boot(); }, []);
   useEffect(() => { if (podium || screen !== 'sermon') stopDictation(); }, [podium, screen]);
@@ -40,3 +42,5 @@ export function App() {
     <${SermonModal} /><${CollectionModal} /><${PrintMenu} /><${Settings} /><${KindColors} /><${NameDialog} /><${Confirm} /><${Alert} /><${DictationBar} /><${DictationStop} />
   </>`;
 }
+SB.app = { App };
+})(globalThis.SB ||= {});

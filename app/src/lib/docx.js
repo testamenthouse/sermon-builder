@@ -1,8 +1,10 @@
 // Minimal Word export: a store-only zip of the handful of XML parts a .docx needs. Paragraph styles only — no library.
-import { zip } from './zip.js';
-import { mdLine } from './md.js';
-import { kindLabel, kindColor } from '../../../shared/blocks.js';
-import { pointNumbers, metaLine } from './print.js';
+(function (SB) {
+'use strict';
+const { zip } = SB.lib.zip;
+const { mdLine } = SB.lib.md;
+const { kindLabel, kindColor } = SB.shared.blocks;
+const { pointNumbers, metaLine } = SB.lib.print;
 
 const x = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 function runs(text) {
@@ -28,7 +30,7 @@ function bodyParas(text, scripture) {
   }
   return out.join('');
 }
-export function docxBlob(sermon, colors) {
+function docxBlob(sermon, colors) {
   const { meta, blocks } = sermon, nums = pointNumbers(blocks);
   let body = para('Title', [{ t: meta.title || 'Untitled' }]);
   if (metaLine(meta)) body += para('Subtitle', [{ t: metaLine(meta) }]);
@@ -52,3 +54,5 @@ export function docxBlob(sermon, colors) {
   const blob = zip([['[Content_Types].xml', types], ['_rels/.rels', rels], ['word/document.xml', doc], ['word/_rels/document.xml.rels', drels], ['word/styles.xml', styles]]);
   return new Blob([blob], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
 }
+(SB.lib ||= {}).docx = { docxBlob };
+})(globalThis.SB ||= {});

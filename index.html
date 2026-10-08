@@ -8,10 +8,51 @@
 <script src="./app/theme.js"></script>
 <link href="./app/fonts/inter.css" rel="stylesheet">
 <link href="./app/src/styles.css" rel="stylesheet">
-<script type="importmap">{"imports":{"react":"./vendor/react.mjs","react-dom/client":"./vendor/client.mjs","htm":"./vendor/htm.mjs"}}</script>
 </head>
 <body>
 <div id="root"></div>
-<script type="module" src="./app/src/main.js"></script>
+<!-- Classic scripts in dependency order (tests/scripts.test.js checks it), so the page also opens from a double-clicked file. -->
+<script src="./vendor/react.js"></script>
+<script src="./vendor/react-dom.js"></script>
+<script src="./vendor/htm.js"></script>
+<script src="./shared/books.js"></script>
+<script src="./shared/bible.js"></script>
+<script src="./shared/blocks.js"></script>
+<script src="./shared/format.js"></script>
+<script src="./shared/illustrations.js"></script>
+<script src="./shared/outline.js"></script>
+<script src="./shared/templates.js"></script>
+<script src="./shared/library.js"></script>
+<script src="./data/kjv/kjv.js"></script>
+<script src="./app/src/lib/html.js"></script>
+<script src="./app/src/fs/fsa.js"></script>
+<script src="./app/src/fs/index.js"></script>
+<script src="./app/src/lib/md.js"></script>
+<script src="./app/src/lib/pdf.js"></script>
+<script src="./app/src/lib/verses.js"></script>
+<script src="./app/src/lib/print.js"></script>
+<script src="./app/src/lib/zip.js"></script>
+<script src="./app/src/lib/docx.js"></script>
+<script src="./app/src/lib/bible.js"></script>
+<script src="./app/src/lib/dictation.js"></script>
+<script src="./app/src/store.js"></script>
+<script src="./app/src/ui/Icons.js"></script>
+<script src="./app/src/ui/Tags.js"></script>
+<script src="./app/src/ui/Select.js"></script>
+<script src="./app/src/ui/Combo.js"></script>
+<script src="./app/src/ui/MdEditor.js"></script>
+<script src="./app/src/ui/Mobile.js"></script>
+<script src="./app/src/ui/Block.js"></script>
+<script src="./app/src/ui/BiblePane.js"></script>
+<script src="./app/src/ui/IllPane.js"></script>
+<script src="./app/src/ui/Library.js"></script>
+<script src="./app/src/ui/Templates.js"></script>
+<script src="./app/src/ui/Illustrations.js"></script>
+<script src="./app/src/ui/Podium.js"></script>
+<script src="./app/src/ui/Sermon.js"></script>
+<script src="./app/src/ui/Gate.js"></script>
+<script src="./app/src/ui/Overlays.js"></script>
+<script src="./app/src/App.js"></script>
+<script src="./app/src/main.js"></script>
 </body>
 </html>

@@ -1,11 +1,13 @@
 // The sermon file: YAML-ish frontmatter + `::: kind Heading {flags}` fenced blocks, Markdown inside. Round-trips exactly.
-import { isKind, FLAGS } from './blocks.js';
+(function (SB) {
+'use strict';
+const { isKind, FLAGS } = SB.shared.blocks;
 
-export const META_KEYS = ['title', 'collection', 'date', 'passage', 'big_idea', 'status', 'tags', 'length', 'template'];
-export const STATUSES = ['draft', 'ready', 'done']; // 'preached' in old files reads as 'done'
+const META_KEYS = ['title', 'collection', 'date', 'passage', 'big_idea', 'status', 'tags', 'length', 'template'];
+const STATUSES = ['draft', 'ready', 'done']; // 'preached' in old files reads as 'done'
 
 let seq = 0;
-export const newId = () => 'b' + Date.now().toString(36) + (seq++).toString(36);
+const newId = () => 'b' + Date.now().toString(36) + (seq++).toString(36);
 
 function parseValue(raw) {
   const v = raw.trim();
@@ -22,7 +24,7 @@ function fmtValue(v) {
   return /^[\s]|[\s]$|^[\[{"'#&*!|>%@`]|:\s|^(true|false|null|-?\d+(\.\d+)?)$/.test(s) || s.includes('\n') ? JSON.stringify(s) : s;
 }
 
-export function parseMeta(text) {
+function parseMeta(text) {
   const meta = {};
   for (const line of text.split('\n')) {
     const m = /^([A-Za-z_][\w-]*):\s?(.*)$/.exec(line); if (!m) continue;
@@ -31,7 +33,7 @@ export function parseMeta(text) {
   return meta;
 }
 
-export function parseBlockHeader(line) {
+function parseBlockHeader(line) {
   const m = /^:::\s*([a-z][a-z-]*)\s*(.*?)\s*$/i.exec(line); if (!m) return null;
   const raw = m[1]; let kind = raw.toLowerCase(), heading = m[2], flags = [];
   const f = /\s*\{([^}]*)\}$/.exec(heading);
@@ -45,7 +47,7 @@ export function parseBlockHeader(line) {
 }
 
 // → { meta, blocks: [{ id, kind, heading, body, flags }] }
-export function parseSermon(src) {
+function parseSermon(src) {
   const text = String(src || '').replace(/\r\n?/g, '\n');
   let meta = {}, rest = text;
   const fm = /^---\n([\s\S]*?)\n---\n?/.exec(text);
@@ -65,7 +67,7 @@ export function parseSermon(src) {
 }
 function mk(kind, heading, body, flags, label = '') { return { id: newId(), kind, heading, body, flags: [...new Set(flags)].filter(f => FLAGS.includes(f)), label: kind === 'custom' ? label : '' }; }
 
-export function normalizeMeta(m) {
+function normalizeMeta(m) {
   const out = { title: String(m.title ?? '').trim(), collection: String(m.collection ?? m.series ?? '').trim(), date: String(m.date ?? '').trim(), passage: String(m.passage ?? '').trim(),
     big_idea: String(m.big_idea ?? m.bigIdea ?? '').trim(), status: m.status === 'preached' ? 'done' : STATUSES.includes(m.status) ? m.status : 'draft',
     tags: Array.isArray(m.tags) ? m.tags.map(String) : typeof m.tags === 'string' && m.tags ? m.tags.split(',').map(s => s.trim()).filter(Boolean) : [],
@@ -75,7 +77,7 @@ export function normalizeMeta(m) {
   return out;
 }
 
-export function serializeSermon({ meta, blocks }) {
+function serializeSermon({ meta, blocks }) {
   const m = normalizeMeta(meta || {});
   const lines = ['---'];
   for (const k of META_KEYS) {
@@ -103,10 +105,10 @@ export function serializeSermon({ meta, blocks }) {
   return lines.join('\n');
 }
 
-export function slugify(s) { return String(s || '').trim().replace(/[\\/:*?"<>|]/g, '-').replace(/\s+/g, ' ').trim() || 'Untitled'; }
-export function countWords(t) { return ((t || '').replace(/^(#{1,3}\s+|>\s?|[-*+]\s+|\d+[.)]\s+)/gm, '').replace(/^\s*[-*]{3,}\s*$/gm, '').replace(/[*_~`]/g, '').match(/\S+/g) || []).length; }
+function slugify(s) { return String(s || '').trim().replace(/[\\/:*?"<>|]/g, '-').replace(/\s+/g, ' ').trim() || 'Untitled'; }
+function countWords(t) { return ((t || '').replace(/^(#{1,3}\s+|>\s?|[-*+]\s+|\d+[.)]\s+)/gm, '').replace(/^\s*[-*]{3,}\s*$/gm, '').replace(/[*_~`]/g, '').match(/\S+/g) || []).length; }
 // Spoken words: everything except notes (and hidden blocks). Scripture verse numbers are not spoken.
-export function sermonWords(blocks, { spoken = true } = {}) {
+function sermonWords(blocks, { spoken = true } = {}) {
   let n = 0;
   for (const b of blocks || []) {
     if (spoken && (b.kind === 'note' || (b.flags || []).includes('hidden'))) continue;
@@ -116,3 +118,5 @@ export function sermonWords(blocks, { spoken = true } = {}) {
   }
   return n;
 }
+(SB.shared ||= {}).format = { META_KEYS, STATUSES, newId, parseMeta, parseBlockHeader, parseSermon, normalizeMeta, serializeSermon, slugify, countWords, sermonWords };
+})(globalThis.SB ||= {});

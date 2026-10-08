@@ -1,5 +1,7 @@
 // The 66 books in canonical order with chapter counts and the abbreviations people actually type.
-export const BOOKS = [
+(function (SB) {
+'use strict';
+const BOOKS = [
   ['Genesis', 50, 'gen ge gn'], ['Exodus', 40, 'ex exo exod'], ['Leviticus', 27, 'lev le lv'], ['Numbers', 36, 'num nu nm nb'], ['Deuteronomy', 34, 'deut dt de deu'],
   ['Joshua', 24, 'josh jos jsh'], ['Judges', 21, 'judg jdg jg jdgs'], ['Ruth', 4, 'rth ru'], ['1 Samuel', 31, '1sam 1sa 1s 1sm'], ['2 Samuel', 24, '2sam 2sa 2s 2sm'],
   ['1 Kings', 22, '1kgs 1ki 1k 1kin'], ['2 Kings', 25, '2kgs 2ki 2k 2kin'], ['1 Chronicles', 29, '1chr 1ch 1chron'], ['2 Chronicles', 36, '2chr 2ch 2chron'], ['Ezra', 10, 'ezr'],
@@ -17,7 +19,7 @@ export const BOOKS = [
 ].map(([name, chapters, abbr]) => ({ name, chapters, abbr: abbr.split(' ') }));
 
 const ALIAS = new Map();
-export function normBook(s) {
+function normBook(s) {
   return String(s).toLowerCase().replace(/\./g, '').replace(/\s+/g, ' ').trim()
     .replace(/^(i{1,3})\s/, (m, r) => r.length + ' ').replace(/^(1st|first)\s/, '1 ').replace(/^(2nd|second)\s/, '2 ').replace(/^(3rd|third)\s/, '3 ')
     .replace(/\s/g, '');
@@ -26,10 +28,12 @@ BOOKS.forEach((b, i) => { ALIAS.set(normBook(b.name), i); for (const a of b.abbr
 ALIAS.set('songofsolomon', 21); ALIAS.set('psalms', 18); ALIAS.set('revelationofjohn', 65);
 
 // Resolve a typed book name to its index, or -1. Exact aliases first, then a unique prefix of a full name (3+ chars).
-export function bookIndex(s) {
+function bookIndex(s) {
   const n = normBook(s); if (!n) return -1;
   if (ALIAS.has(n)) return ALIAS.get(n);
   if (n.length < 3) return -1;
   const hits = BOOKS.map((b, i) => normBook(b.name).startsWith(n) ? i : -1).filter(i => i >= 0);
   return hits.length === 1 ? hits[0] : -1;
 }
+(SB.shared ||= {}).books = { BOOKS, normBook, bookIndex };
+})(globalThis.SB ||= {});

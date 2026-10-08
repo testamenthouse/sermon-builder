@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { verseEntries } from '../app/src/lib/verses.js';
-import { Pdf, FONT_WIDTHS } from '../app/src/lib/pdf.js';
+import { verses, pdf } from '../app/src/lib/node.js';
+const { verseEntries } = verses, { Pdf, FONT_WIDTHS } = pdf;
 
 const sermon = { meta: { title: 'Grace Walk' }, blocks: [
   { kind: 'intro', heading: '', body: 'Remember John 3:16 and Romans 8:28.' },

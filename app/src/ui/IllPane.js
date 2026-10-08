@@ -1,11 +1,13 @@
-import { html } from '../lib/html.js';
-import { useEffect, useRef, useState } from 'react';
-import { useStore, set, toggleIll, useIllustration, openIllustrations, createIllustration, open, flash } from '../store.js';
-import { illustrationMatches } from '../../../shared/illustrations.js';
-import { I } from './Icons.js';
+(function (SB) {
+'use strict';
+const { html } = SB.lib.html;
+const { useEffect, useRef, useState } = React;
+const { useStore, set, toggleIll, useIllustration, openIllustrations, createIllustration, open, flash } = SB.store;
+const { illustrationMatches } = SB.shared.illustrations;
+const { I } = SB.ui.Icons;
 
 // Library beside the sermon, like the Bible pane: find, preview, Insert fills the current empty illustration block or adds one after it.
-export function IllPane() {
+function IllPane() {
   const ills = useStore(s => s.illustrations);
   const cur = useStore(s => { const o = open(); return o ? o.blocks.find(b => b.id === s.curBlock) : null; });
   const [q, setQ] = useState(''); const [sel, setSel] = useState(null); const inp = useRef(null);
@@ -27,3 +29,5 @@ export function IllPane() {
     </>`}
   </div>`;
 }
+(SB.ui ||= {}).IllPane = { IllPane };
+})(globalThis.SB ||= {});

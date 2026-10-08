@@ -15,11 +15,11 @@ A minimalist, offline, block-based sermon builder for the Mac — Writer's desig
 ## Layout
 
 ```
-index.html      The app page: import map (react, react-dom/client, htm → vendor/) + app/src/main.js; serve the repo folder and it runs
-app/            The UI: React through `htm` tagged templates (plain ES modules, no JSX, no build) + styles, fonts, theme.js
-vendor/         Browser builds of React 18, ReactDOM, scheduler and htm (fetched + rewired by scripts/vendor.js; never edit by hand)
+index.html      The app page: ~40 classic `<script>` tags in dependency order (vendor, shared, KJV, lib, store, ui, App, main); double-click it and it runs
+app/            The UI: React through `htm` tagged templates (classic scripts, no JSX, no build, no modules) + styles, fonts, theme.js
+vendor/         UMD builds of React 18, ReactDOM and htm as the globals `React`, `ReactDOM`, `htm` (fetched by scripts/vendor.js; never edit by hand)
 shared/         Pure modules used by app, MCP and tests: format.js (file format), bible.js (KJV lookup/search/refs), blocks.js, templates.js, books.js
-data/kjv/       kjv.json — 66 books, 31,102 verses (public domain; built by scripts/build-kjv.js)
+data/kjv/       kjv.js — `SB.kjv`, 66 books, 31,102 verses (public domain; built by scripts/build-kjv.js)
 mcp/            MCP server for local Claude (see mcp/README.md)
 desktop/        Electron shell, electron-builder config, update + release wiring; dictate/ = the Speech.framework helper (Swift) built into bin/ by scripts/build-dictate.js
 tests/          node --test: format round-trip, Bible parsing/lookup/search, MCP end to end
@@ -37,7 +37,7 @@ cd desktop && env -u ELECTRON_RUN_AS_NODE npm run smoke # headless load check
 cd desktop && npm run dist     # DMG + zip in desktop/dist
 ```
 
-**No build step.** The browser runs the source as it is: `index.html` carries an import map that resolves `react`, `react-dom/client` and `htm` to `vendor/`, and every component is an `html\`…\`` template (`app/src/lib/html.js` = htm bound to `createElement`, `<>` → Fragment, components interpolated as `<${Foo}>…<//>`). Any static server over the repo folder is the web app — `npm run dev` is a 20-line one; GitHub Pages on the repo root would work the same. `npm run vendor` refreshes `vendor/` from esm.sh when a version in `scripts/vendor.js` changes (mirror it in the import map). Headless QA: `node scripts/serve.js` + Playwright (`channel: 'chrome'`), seed OPFS, `window.__sb.setLibrary(h)` then `window.__sb.loadLibrary(name)`.
+**No build step, no modules.** Double-clicking `index.html` must work (pastors do not start servers), and Chrome refuses module scripts and `fetch` from a `file://` page, so every file is a classic script: each one is an IIFE over the global `SB` that reads the namespaces it needs at the top (`const { x } = SB.shared.format`) and assigns its own at the end (`(SB.shared ||= {}).format = { … }`; `SB.lib.*`, `SB.ui.*`, `SB.fs`, `SB.fsa`, `SB.store`, `SB.app`, `SB.kjv`). `index.html` lists them in dependency order and `tests/scripts.test.js` fails if a script reads a namespace defined later, if a page script uses `import`/`export`, or if the Node loaders disagree with the page order. Node code never imports the files directly: `shared/node.js` (shared + KJV) and `app/src/lib/node.js` (md, pdf, verses, dictation) load them in that order and export the namespaces. React, ReactDOM and htm are UMD globals from `vendor/`; the KJV is `data/kjv/kjv.js` setting `SB.kjv`, so `loadBible()` resolves at once. Every component is an `html\`…\`` template (`app/src/lib/html.js` = htm bound to React.createElement). Ruling 2026-10-08: it is the same shape as the companion Writer app and is what makes “download the zip, double-click” true; a single bundled file was rejected (file:// loads sibling classic scripts fine and the Bible would make it unreadable).
 
 VS Code shells set `ELECTRON_RUN_AS_NODE=1`, which turns Electron into plain Node — unset it. `npm run sync` (part of start/smoke/dist) copies `index.html`, `app/`, `shared/`, `vendor/` and `data/kjv` into `desktop/app` with the production CSP (the import map is the one inline script, allowed by its sha256), and also compiles `desktop/dictate/dictate.swift` into `desktop/bin/dictate` with `xcrun swiftc` (Xcode command line tools); `DICTATE_BIN=<script> npm run smoke` drives the bridge with a fake helper. If npm reports blocked install scripts, `npm approve-scripts esbuild` (root) and `npm approve-scripts electron electron-builder` (desktop), then `node node_modules/electron/install.js` in `desktop/`.
 

@@ -1,9 +1,11 @@
-import { html } from '../lib/html.js';
-import { useState } from 'react';
-import { I } from './Icons.js';
+(function (SB) {
+'use strict';
+const { html } = SB.lib.html;
+const { useState } = React;
+const { I } = SB.ui.Icons;
 
 // Chip input: comma or Enter commits a tag, Backspace on an empty field takes the last one back, × removes one.
-export function TagsInput({ value, onChange, placeholder = 'Tags', className = '', onKeyDown }) {
+function TagsInput({ value, onChange, placeholder = 'Tags', className = '', onKeyDown }) {
   const [draft, setDraft] = useState('');
   const commit = raw => { const parts = String(raw).split(',').map(s => s.trim()).filter(Boolean); if (!parts.length) return; const next = [...value]; for (const p of parts) if (!next.some(t => t.toLowerCase() === p.toLowerCase())) next.push(p); setDraft(''); if (next.length !== value.length) onChange(next); };
   const remove = i => onChange(value.filter((_, j) => j !== i));
@@ -17,3 +19,5 @@ export function TagsInput({ value, onChange, placeholder = 'Tags', className = '
     <input value=${draft} placeholder=${value.length ? '' : placeholder} onChange=${e => { const v = e.target.value; if (v.includes(',')) commit(v); else setDraft(v); }} onKeyDown=${onKey} onBlur=${() => commit(draft)} />
   </div>`;
 }
+(SB.ui ||= {}).Tags = { TagsInput };
+})(globalThis.SB ||= {});

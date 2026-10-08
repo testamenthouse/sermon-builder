@@ -1,8 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { parseRef, formatRef, lookup, search, findRefs, bookIndex, passageText } from '../shared/bible.js';
-const bible = JSON.parse(fs.readFileSync(new URL('../data/kjv/kjv.json', import.meta.url), 'utf8'));
+import { bible as B, kjv } from '../shared/node.js';
+const { parseRef, formatRef, lookup, search, findRefs, bookIndex, passageText } = B;
+const bible = kjv;
 
 test('book aliases', () => {
   assert.equal(bookIndex('Gen'), 0); assert.equal(bookIndex('1 Sam.'), 8); assert.equal(bookIndex('I Kings'), 10); assert.equal(bookIndex('Ps'), 18);

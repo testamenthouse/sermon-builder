@@ -1,7 +1,8 @@
 // Dictation text pass: spoken punctuation and segment joining (the DOM inserter is covered by the browser walk).
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { spokenPunctuation, joinText, splitCommands } from '../app/src/lib/dictation.js';
+import { dictation } from '../app/src/lib/node.js';
+const { spokenPunctuation, joinText, splitCommands } = dictation;
 
 test('spoken marks become punctuation attached to the word before', () => {
   assert.equal(spokenPunctuation('I went to the store period'), 'I went to the store.');

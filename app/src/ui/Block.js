@@ -1,18 +1,20 @@
-import { html } from '../lib/html.js';
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { useStore, set, setBlock, setKind, removeBlock, moveBlock, duplicateBlock, toggleFlag, fillScripture, setReference, insertBlock, createIllustration, flash, touch, open, toggleIll } from '../store.js';
-import { KINDS, KIND, kindLabel, kindColor } from '../../../shared/blocks.js';
-import { moveStep, canInsert, canSwitch } from '../../../shared/outline.js';
-import { MdEditor } from './MdEditor.js';
-import { caretTo, caretEdge } from '../lib/md.js';
-import { I } from './Icons.js';
+(function (SB) {
+'use strict';
+const { html } = SB.lib.html;
+const { useEffect, useLayoutEffect, useRef, useState } = React;
+const { useStore, set, setBlock, setKind, removeBlock, moveBlock, duplicateBlock, toggleFlag, fillScripture, setReference, insertBlock, createIllustration, flash, touch, open, toggleIll } = SB.store;
+const { KINDS, KIND, kindLabel, kindColor } = SB.shared.blocks;
+const { moveStep, canInsert, canSwitch } = SB.shared.outline;
+const { MdEditor } = SB.ui.MdEditor;
+const { caretTo, caretEdge } = SB.lib.md;
+const { I } = SB.ui.Icons;
 
 // Every empty body says what goes there: the kind's label, or Notes under a titled block.
 const bodyPh = b => b.kind === 'scripture' ? '' : HAS_HEADING(b.kind) || b.kind === 'custom' ? 'Notes' : b.kind === 'quote' ? 'Quote' : KIND[b.kind].label;
 const HAS_HEADING = k => !!KIND[k].heading && k !== 'scripture' && k !== 'quote';
 
 // The "+" between blocks. Opens the kind menu in insert mode.
-export function Gap({ index, end }) {
+function Gap({ index, end }) {
   const km = useStore(s => s.kindMenu);
   const on = km && km.mode === 'insert' && km.index === index;
   const allow = k => { const s = open(); return !s || canInsert(s.blocks, index, k); }; // inside a container: no point, transition or closing kind
@@ -26,7 +28,7 @@ export function Gap({ index, end }) {
 // grows the document or scrolls the sermon; it flips above the anchor when the
 // viewport has more room there and scrolls inside itself when the list is taller.
 const PAD = 8, GAP = 4;
-export function KindMenu({ onPick, onIll, align = 'left', current, allow = () => true }) {
+function KindMenu({ onPick, onIll, align = 'left', current, allow = () => true }) {
   const [q, setQ] = useState(''); const [pos, setPos] = useState(null); const ref = useRef(null), inp = useRef(null);
   useEffect(() => { if (pos && inp.current) inp.current.focus({ preventScroll: true }); }, [!!pos]); // only once placed: a visibility:hidden input refuses focus
   useEffect(() => { const h = e => { if (ref.current && !ref.current.contains(e.target)) set({ kindMenu: null }); }; document.addEventListener('pointerdown', h, true); return () => document.removeEventListener('pointerdown', h, true); }, []);
@@ -71,7 +73,7 @@ function BlockMenu({ b, index, count, onClose }) {
   </div>`;
 }
 
-export function Block({ b, index, count, num, cur, editable = true }) {
+function Block({ b, index, count, num, cur, editable = true }) {
   const focusReq = useStore(s => s.focusReq && s.focusReq.id === b.id ? s.focusReq : null);
   const kc = useStore(s => kindColor(b.kind, s.settings.colors));
   const km = useStore(s => s.kindMenu && s.kindMenu.mode === 'switch' && s.kindMenu.id === b.id);
@@ -130,3 +132,5 @@ export function Block({ b, index, count, num, cur, editable = true }) {
     ${b.kind === 'quote' && html`<div className="src">— <input placeholder="Source" value=${b.heading} onChange=${e => { touch(); setBlock(b.id, { heading: e.target.value }); }} /></div>`}
   </div>`;
 }
+(SB.ui ||= {}).Block = { Gap, KindMenu, Block };
+})(globalThis.SB ||= {});

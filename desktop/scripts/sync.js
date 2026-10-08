@@ -8,11 +8,9 @@ const root = path.resolve(__dirname, '..', '..'), desk = path.resolve(__dirname,
 const appDir = path.join(desk, 'app');
 fs.rmSync(appDir, { recursive: true, force: true });
 for (const d of ['app', 'shared', 'vendor', 'data/kjv']) fs.cpSync(path.join(root, d), path.join(appDir, d), { recursive: true });
-// The page gets a strict CSP (the shell serves it from app://sermon); the import map is the one inline script, allowed by hash.
+// The page gets a strict CSP (the shell serves it from app://sermon); every script is a file, so no inline script is allowed.
 let html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
-const map = html.match(/<script type="importmap">([^<]*)<\/script>/); if (!map) throw new Error('sync: import map not found in index.html');
-const hash = require('crypto').createHash('sha256').update(map[1]).digest('base64');
-const CSP = `default-src 'self' app:; script-src 'self' 'sha256-${hash}' app:; style-src 'self' 'unsafe-inline' app:; font-src 'self' app:; img-src 'self' data: blob: app:; connect-src 'self' app:; frame-src 'self' about: blob: app:`;
+const CSP = `default-src 'self' app:; script-src 'self' app:; style-src 'self' 'unsafe-inline' app:; font-src 'self' app:; img-src 'self' data: blob: app:; connect-src 'self' app:; frame-src 'self' about: blob: app:`;
 html = html.replace('<meta charset="utf-8">', '<meta charset="utf-8">\n<meta http-equiv="Content-Security-Policy" content="' + CSP + '">');
 fs.writeFileSync(path.join(appDir, 'index.html'), html);
 fs.rmSync(bundle, { recursive: true, force: true });

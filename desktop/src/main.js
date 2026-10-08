@@ -117,7 +117,7 @@ function createWindow() {
     win.webContents.on('did-finish-load', async () => {
       await new Promise(r => setTimeout(r, 2500));
       try {
-        const r = await win.webContents.executeJavaScript(`(async () => ({ title: document.title, origin: location.origin, text: document.body.innerText.trim().replace(/\\s+/g, ' ').slice(0, 80), bridge: typeof window.sermon, font: document.fonts.check('600 20px Inter'), kjv: await fetch('./data/kjv/kjv.json').then(r => r.ok) }))()`);
+        const r = await win.webContents.executeJavaScript(`(async () => ({ title: document.title, origin: location.origin, text: document.body.innerText.trim().replace(/\\s+/g, ' ').slice(0, 80), bridge: typeof window.sermon, font: document.fonts.check('600 20px Inter'), kjv: !!(window.SB && window.SB.kjv && window.SB.lib.bible.lookupNow('John 3:16')) }))()`);
         console.log('SMOKE ' + JSON.stringify(r));
         if (process.env.DICTATE_BIN) {
           const d = await win.webContents.executeJavaScript(`new Promise(res => { const evs = []; window.dictate.on(ev => { evs.push(ev.t + (ev.text ? ':' + ev.text : '')); if (ev.t === 'exit') res(evs); }); window.dictate.start('en-US').then(ok => { if (!ok) res(['start:false']); setTimeout(() => window.dictate.stop(), 1200); }); setTimeout(() => res(evs.concat('timeout')), 6000); })`);

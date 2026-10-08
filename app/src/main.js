@@ -1,4 +1,7 @@
-import { html } from './lib/html.js';
-import { createRoot } from 'react-dom/client';
-import { App } from './App.js';
+(function (SB) {
+'use strict';
+const { html } = SB.lib.html;
+const { createRoot } = ReactDOM;
+const { App } = SB.app;
 createRoot(document.getElementById('root')).render(html`<${App} />`);
+})(globalThis.SB ||= {});

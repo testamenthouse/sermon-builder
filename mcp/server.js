@@ -8,14 +8,15 @@ import os from 'node:os';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
-import { parseSermon, serializeSermon, normalizeMeta, slugify, newId, sermonWords, STATUSES, parseMeta } from '../shared/format.js';
-import { illustrationMatches, illustrationUses } from '../shared/illustrations.js';
-import { KINDS, isKind } from '../shared/blocks.js';
-import { seedTemplates, TEMPLATES_DIR } from '../shared/templates.js';
-import { lookup, search, passageText, BOOKS, bookIndex } from '../shared/bible.js';
+import { format, illustrations, blocks, templates, bible as kjvApi, kjv } from '../shared/node.js';
+const { parseSermon, serializeSermon, normalizeMeta, slugify, newId, sermonWords, STATUSES, parseMeta } = format;
+const { illustrationMatches, illustrationUses } = illustrations;
+const { KINDS, isKind } = blocks;
+const { seedTemplates, TEMPLATES_DIR } = templates;
+const { lookup, search, passageText, BOOKS, bookIndex } = kjvApi;
 
 const here = path.dirname(new URL(import.meta.url).pathname);
-const bible = JSON.parse(fs.readFileSync(path.join(here, '..', 'data', 'kjv', 'kjv.json'), 'utf8'));
+const bible = kjv;
 const CONFIG = path.join(os.homedir(), 'Library', 'Application Support', 'Sermon Builder', 'config.json');
 const KIND_LIST = KINDS.map(k => k.kind);
 

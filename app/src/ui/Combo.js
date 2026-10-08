@@ -1,9 +1,11 @@
-import { html } from '../lib/html.js';
-import { useEffect, useRef, useState } from 'react';
+(function (SB) {
+'use strict';
+const { html } = SB.lib.html;
+const { useEffect, useRef, useState } = React;
 
 // Text field with the app's own suggestion list beneath it (no native datalist): filters as you type,
 // ↑/↓ walk the list, Enter takes the highlighted row, Esc closes. Free text stays allowed.
-export function Combo({ value, onChange, options, className = '', onKeyDown, placeholder }) {
+function Combo({ value, onChange, options, className = '', onKeyDown, placeholder }) {
   const [open, setOpen] = useState(false); const [hi, setHi] = useState(0); const box = useRef(null);
   const q = value.trim().toLowerCase();
   const list = options.filter(o => !q || o.toLowerCase().includes(q)).filter(o => o.toLowerCase() !== q);
@@ -22,3 +24,5 @@ export function Combo({ value, onChange, options, className = '', onKeyDown, pla
     ${show && html`<div className="pop" style=${{ top: '100%', left: 0, right: 0, marginTop: 4 }}>${list.map((o, i) => html`<button key=${o} className=${i === hi ? 'on' : ''} onMouseDown=${e => e.preventDefault()} onMouseEnter=${() => setHi(i)} onClick=${() => pick(o)}>${o}</button>`)}</div>`}
   </div>`;
 }
+(SB.ui ||= {}).Combo = { Combo };
+})(globalThis.SB ||= {});

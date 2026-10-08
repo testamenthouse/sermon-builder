@@ -1,5 +1,7 @@
 // Store-only zip of [name, string|Uint8Array] pairs — no library.
-export function zip(files) {
+(function (SB) {
+'use strict';
+function zip(files) {
   const enc = new TextEncoder(), tbl = new Int32Array(256);
   for (let i = 0; i < 256; i++) { let c = i; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; tbl[i] = c; }
   const crc = d => { let c = -1; for (let i = 0; i < d.length; i++) c = tbl[(c ^ d[i]) & 255] ^ (c >>> 8); return (c ^ -1) >>> 0; };
@@ -16,6 +18,8 @@ export function zip(files) {
   const end = new Uint8Array([...u32(0x06054b50), ...u16(0), ...u16(0), ...u16(files.length), ...u16(files.length), ...u32(cdLen), ...u32(off), ...u16(0)]);
   return new Blob([...parts, ...cd, end], { type: 'application/zip' });
 }
-export function download(blob, name) {
+function download(blob, name) {
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }
+(SB.lib ||= {}).zip = { zip, download };
+})(globalThis.SB ||= {});

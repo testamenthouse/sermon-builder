@@ -1,22 +1,24 @@
-import { html } from '../lib/html.js';
-import { useEffect, useRef, useState } from 'react';
-import { fs } from '../fs/index.js';
-import { useStore, set, stop, closeMenus, createSermon, openSermon, commitMeta, deleteSermon, sermonOf, setSettings, logout, pickFolder, flash, setCollectionColor, renameCollection, deleteCollection, createCollection, get, DEFAULTS, stopDictation } from '../store.js';
-import { STATUSES } from '../../../shared/format.js';
-import { doPrint } from '../lib/print.js';
-import { I, KIND_ICON } from './Icons.js';
-import { KINDS, KIND_COLORS, DEFAULT_KIND_COLORS } from '../../../shared/blocks.js';
-import { TagsInput } from './Tags.js';
-import { Select } from './Select.js';
+(function (SB) {
+'use strict';
+const { html } = SB.lib.html;
+const { useEffect, useRef, useState } = React;
+const { fs } = SB.fs;
+const { useStore, set, stop, closeMenus, createSermon, openSermon, commitMeta, deleteSermon, sermonOf, setSettings, logout, pickFolder, flash, setCollectionColor, renameCollection, deleteCollection, createCollection, get, DEFAULTS, stopDictation } = SB.store;
+const { STATUSES } = SB.shared.format;
+const { doPrint } = SB.lib.print;
+const { I, KIND_ICON } = SB.ui.Icons;
+const { KINDS, KIND_COLORS, DEFAULT_KIND_COLORS } = SB.shared.blocks;
+const { TagsInput } = SB.ui.Tags;
+const { Select } = SB.ui.Select;
 
-export const PALETTE = ['', '#d9d9d9', '#f5c2c2', '#f8d9a8', '#f6e7a1', '#c8e6c9', '#bfe0f5', '#d6ccf2', '#f5c8e2'];
+const PALETTE = ['', '#d9d9d9', '#f5c2c2', '#f8d9a8', '#f6e7a1', '#c8e6c9', '#bfe0f5', '#d6ccf2', '#f5c8e2'];
 const cap = s => s[0].toUpperCase() + s.slice(1);
 
-export function Scrim({ onClose, children, z }) {
+function Scrim({ onClose, children, z }) {
   return html`<div className="scrim" style=${z ? { zIndex: z } : undefined} onClick=${onClose}><div className="dlg" onClick=${stop}>${children}</div></div>`;
 }
 // A one-button card (the Chrome notice for dictation on the web build).
-export function Alert() {
+function Alert() {
   const a = useStore(s => s.alert); if (!a) return null;
   return html`<${Scrim} onClose=${() => set({ alert: null })} z=${22}>
     <h3>${a}</h3>
@@ -24,19 +26,19 @@ export function Alert() {
   <//>`;
 }
 // Stop, bottom right while dictating — always visible, unlike the hover-revealed mic that started it.
-export function DictationStop() {
+function DictationStop() {
   const { on, side } = useStore(s => ({ on: s.dictation, side: (s.biblePane || s.illPane) && !s.narrow }));
   if (!on) return null;
   return html`<button className="dict-stop" style=${{ right: side ? 360 : 20 }} onMouseDown=${e => e.preventDefault()} onClick=${stopDictation}><${I} name="mic" size=${14} />Stop</button>`;
 }
 // Live dictation: a pulsing dot and the words not yet committed, bottom center.
-export function DictationBar() {
+function DictationBar() {
   const { on, partial, level, note } = useStore(s => ({ on: s.dictation, partial: s.dictPartial, level: s.dictLevel, note: s.dictNote }));
   if (!on) return null;
   // the dot pulses while idle and swells with the microphone level, so a silent mic is visible
   return html`<div className="dict" onMouseDown=${e => e.preventDefault()}><span className=${'dot' + (level > 0.05 ? ' hot' : '')} style=${{ transform: 'scale(' + (1 + level * 1.2).toFixed(2) + ')' }} /><span className="live">${partial ? html`<span>${partial}</span>` : html`<span className="status">${note || (on === 'starting' ? 'Starting' : 'Listening')}</span>`}</span></div>`;
 }
-export function Confirm() {
+function Confirm() {
   const c = useStore(s => s.confirm); if (!c) return null;
   return html`<${Scrim} onClose=${() => set({ confirm: null })} z=${22}>
     <h3>Delete “${c.title}”?</h3>
@@ -45,7 +47,7 @@ export function Confirm() {
 }
 
 // New sermon (create) and Sermon settings (existing) share one modal — like Writer's Book modal.
-export function SermonModal() {
+function SermonModal() {
   const m = useStore(s => s.sermonModal); const collections = useStore(s => s.collections); const sermons = useStore(s => s.sermons);
   if (!m) return null;
   return html`<${SermonForm} key=${m.path || 'new'} m=${m} collections=${collections} templates=${sermons.filter(s => s.meta.template)} />`;
@@ -85,7 +87,7 @@ function SermonForm({ m, collections, templates }) {
   <//>`;
 }
 
-export function CollectionModal() {
+function CollectionModal() {
   const m = useStore(s => s.collectionModal); if (!m) return null;
   return html`<${CollectionForm} key=${m.name || 'new'} name=${m.name || ''} />`;
 }
@@ -105,7 +107,7 @@ function CollectionForm({ name }) {
   <//>`;
 }
 
-export function PrintMenu() {
+function PrintMenu() {
   const openP = useStore(s => s.printMenu); const settings = useStore(s => s.settings); const openPath = useStore(s => s.openPath);
   const [scope, setScope] = useState('manuscript');
   if (!openP || !openPath) return null;
@@ -122,7 +124,7 @@ export function PrintMenu() {
   <//>`;
 }
 
-export function Settings() {
+function Settings() {
   const o = useStore(s => s.settingsOpen); const st = useStore(s => s.settings); const libName = useStore(s => s.libName); const mcp = useStore(s => s.mcpCommand);
   if (!o) return null;
   const Seg = ({ k, opts, fmt = x => x }) => html`<div className="seg">${opts.map(v => html`<button key=${v} className=${st[k] === v ? 'on' : ''} onClick=${() => setSettings({ [k]: v })}>${fmt(v)}</button>`)}</div>`;
@@ -140,7 +142,7 @@ export function Settings() {
 }
 
 // One ink color per block kind: caption, rail glyph, number and a point's rule wear it. '' = the faint token.
-export function KindColors() {
+function KindColors() {
   const o = useStore(s => s.colorsOpen); const colors = useStore(s => s.settings.colors || {});
   if (!o) return null;
   const pick = (kind, c) => setSettings({ colors: { ...colors, [kind]: c } });
@@ -151,7 +153,7 @@ export function KindColors() {
   <//>`;
 }
 
-export function NameDialog() {
+function NameDialog() {
   const d = useStore(s => s.nameDialog); const [v, setV] = useState(''); const ref = useRef(null);
   useEffect(() => { setV(''); if (d && ref.current) ref.current.focus(); }, [d]);
   if (!d) return null;
@@ -162,3 +164,5 @@ export function NameDialog() {
     <div className="acts"><button className="cb" onClick=${close}>Cancel</button><button className="pb sm" onClick=${save}>Save</button></div>
   <//>`;
 }
+(SB.ui ||= {}).Overlays = { PALETTE, Scrim, Alert, DictationStop, DictationBar, Confirm, SermonModal, CollectionModal, PrintMenu, Settings, KindColors, NameDialog };
+})(globalThis.SB ||= {});

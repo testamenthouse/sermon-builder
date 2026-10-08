@@ -1,12 +1,13 @@
 // KJV lookup, reference parsing and search. Pure functions over a loaded { version, books:[{name, chapters:[[...]]}] } object.
-import { BOOKS, bookIndex } from './books.js';
-export { BOOKS, bookIndex };
+(function (SB) {
+'use strict';
+const { BOOKS, bookIndex } = SB.shared.books;
 
 const DASH = /[–—-]/;
 
 // Parse "John 3:16-18; 4:1" into { refs: [{ book, c1, v1, c2, v2 }] } — v1 = 0 means whole chapter.
 // Returns null when the book is unknown. Single-chapter books treat "Jude 3" as verse 3.
-export function parseRef(input) {
+function parseRef(input) {
   const s = String(input || '').trim(); if (!s) return null;
   const m = /^((?:[1-3]|i{1,3}|1st|2nd|3rd|first|second|third)?\s*[a-z]+(?:\s+(?:of\s+)?[a-z]+)*)\.?\s*(.*)$/i.exec(s);
   if (!m) return null;
@@ -51,7 +52,7 @@ function covers(a, b) {
 }
 
 // Canonical display: "John 3:16–18", "Psalm 23", "Genesis 1:1–2:3".
-export function formatRef(parsed) {
+function formatRef(parsed) {
   if (!parsed || !parsed.refs.length) return '';
   const name = i => BOOKS[i].name === 'Psalms' ? 'Psalm' : BOOKS[i].name;
   const out = []; let lastBook = -1, lastChapter = -1;
@@ -69,7 +70,7 @@ export function formatRef(parsed) {
 }
 
 // Resolve a parsed reference to verses: [{ book, chapter, verse, text }]. Out-of-range verses are clamped; a verse named twice comes out once.
-export function verses(bible, parsed) {
+function verses(bible, parsed) {
   const out = [], seen = new Set(); if (!bible || !parsed) return out;
   for (const r of parsed.refs) {
     const chapters = bible.books[r.book].chapters;
@@ -87,17 +88,17 @@ export function verses(bible, parsed) {
 }
 
 // Lookup by string: { ref: "John 3:16–18", verses: [...] } or null.
-export function lookup(bible, input) {
+function lookup(bible, input) {
   const p = parseRef(input); if (!p) return null;
   const vs = verses(bible, p); if (!vs.length) return null;
   return { ref: formatRef(p), verses: vs };
 }
 
 // One verse per line, numbered — the body text written into a scripture block.
-export function passageText(vs) { return vs.map(v => v.verse + ' ' + v.text).join('\n'); }
+function passageText(vs) { return vs.map(v => v.verse + ' ' + v.text).join('\n'); }
 
 // Keyword search (all words must appear, case-insensitive). Optional book index or array of indexes. Capped.
-export function search(bible, query, { books = null, limit = 200 } = {}) {
+function search(bible, query, { books = null, limit = 200 } = {}) {
   const terms = String(query || '').toLowerCase().split(/\s+/).filter(Boolean); if (!terms.length || !bible) return [];
   const phrase = /^".*"$/.test(String(query).trim()) ? String(query).trim().slice(1, -1).toLowerCase() : null;
   const set = books == null ? null : new Set(Array.isArray(books) ? books : [books]);
@@ -115,12 +116,12 @@ export function search(bible, query, { books = null, limit = 200 } = {}) {
   }
   return out;
 }
-export function refLabel(book, chapter, verse) { return formatRef({ refs: [{ book, c1: chapter, v1: verse || 0, c2: chapter, v2: verse || 0 }] }); }
+function refLabel(book, chapter, verse) { return formatRef({ refs: [{ book, c1: chapter, v1: verse || 0, c2: chapter, v2: verse || 0 }] }); }
 
 // Find scripture references inside prose: [{ index, length, text, parsed }]. Used to make references tappable in Podium.
 const BOOK_RE = '(?:[1-3]\\s?|I{1,3}\\s)?(?:Song of Solomon|Song of Songs|[A-Z][a-z]{1,13})\\.?';
 const INLINE = new RegExp('\\b(' + BOOK_RE + ')\\s(\\d{1,3}(?::\\d{1,3}[a-z]?)?(?:\\s?[-\\u2013]\\s?\\d{1,3}(?::\\d{1,3})?)?(?:,\\s?\\d{1,3}(?:\\s?[-\\u2013]\\s?\\d{1,3})?)*)\\b', 'g');
-export function findRefs(text) {
+function findRefs(text) {
   const out = []; let m; INLINE.lastIndex = 0;
   while ((m = INLINE.exec(text || ''))) {
     if (bookIndex(m[1]) < 0) continue;
@@ -129,3 +130,5 @@ export function findRefs(text) {
   }
   return out;
 }
+(SB.shared ||= {}).bible = { BOOKS, bookIndex, parseRef, formatRef, verses, lookup, passageText, search, refLabel, findRefs };
+})(globalThis.SB ||= {});
