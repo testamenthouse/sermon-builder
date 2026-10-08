@@ -1,6 +1,6 @@
 # Sermon Builder
 
-A minimalist, offline sermon editor that runs in Google Chrome. You write a sermon as a stack of typed blocks, the King James Bible fills in scripture as you type a reference, Podium mode puts the sermon on screen while you preach, and the whole library is a plain folder of Markdown files you own.
+A minimalist, offline sermon editor that runs in Google Chrome on a desktop or laptop. You write a sermon as a stack of typed blocks, the King James Bible fills in scripture as you type a reference, Podium mode puts the sermon on screen while you preach, and the whole library is a plain folder of Markdown files you own.
 
 **Try it now, or use it forever, without downloading anything:** https://testamenthouse.github.io/sermon-builder/
 
@@ -14,6 +14,8 @@ Open that link in Google Chrome and pick a folder for your sermons. That is the 
 4. Click **Open folder** and pick where your sermons should live.
 
 Chrome has everything the app needs, dictation included.
+
+**Desktop only.** There is no phone or tablet version. A phone browser cannot open a folder on disk, which is the only place the app stores anything, so on an iPhone, iPad or Android device the page shows a "Desktop Google Chrome required" screen and nothing else.
 
 **There is no database.** The only storage is the folder you choose. The whole app runs off that folder: every sermon, collection, template, illustration and setting is a file in it, read and written directly. No accounts, no server, no analytics. Everything stays on your machine.
 
@@ -47,9 +49,7 @@ https://testamenthouse.github.io/sermon-builder/
 
 **Your own copy.** Download the ZIP and double-click `index.html`, as described at the top. Same app, no server.
 
-Chrome is required because the app opens a folder on your disk through the File System Access API. Other browsers show a "Google Chrome required" screen.
-
-Phones and tablets can read a library over the web version when the layout collapses to one column, but they cannot open a folder. Writing happens on a desktop.
+Desktop Chrome is required because the app opens a folder on your disk through the File System Access API, which Chrome ships on Mac, Windows and Linux only. Other browsers, and every phone and tablet, show a "Desktop Google Chrome required" screen.
 
 ## Your library is a folder
 
@@ -150,7 +150,7 @@ Click the mic in the sermon tools or press `⌘⇧D`. Words land at the caret, i
 
 Speak punctuation the way macOS Dictation expects: `period`, `comma`, `question mark`, `open quote`, `new paragraph`, and so on.
 
-uses Chrome's speech engine. Other browsers cannot dictate.
+Dictation uses Chrome's speech engine. Other browsers cannot dictate.
 
 ## Keyboard shortcuts
 

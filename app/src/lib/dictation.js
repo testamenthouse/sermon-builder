@@ -11,7 +11,15 @@ const isChrome = () => {
   return /Chrome\//.test(ua) && !/Edg\/|OPR\/|Brave|SamsungBrowser|CriOS|Vivaldi|YaBrowser/.test(ua);
 };
 // The app itself runs only where its folder access and dictation work: Google Chrome.
-const supported = () => isChrome();
+// Desktop only: the folder comes from the File System Access API, which Chrome ships on desktop and not on
+// Android (iOS has no Chrome engine at all). A phone or tablet never gets past the Blocked card.
+const hasPicker = () => typeof window !== 'undefined' && typeof window.showDirectoryPicker === 'function';
+const mobile = () => {
+  const d = typeof navigator !== 'undefined' && navigator.userAgentData;
+  if (d && typeof d.mobile === 'boolean') return d.mobile;
+  return typeof navigator !== 'undefined' && /Mobi|Android|iPhone|iPad|iPod/.test(navigator.userAgent);
+};
+const supported = () => isChrome() && hasPicker();
 const WebSR = () => window.SpeechRecognition || window.webkitSpeechRecognition;
 // 'web' | null (null outside Chrome: the caller shows the Chrome alert)
 function backend() { return WebSR() && isChrome() ? 'web' : null; }
@@ -136,5 +144,5 @@ function createDictation({ onState, onPartial, onFinal, onError, onLevel = () =>
     get active() { return active; }
   };
 }
-(SB.lib ||= {}).dictation = { isChrome, supported, backend, spokenPunctuation, joinText, splitCommands, paragraphBefore, createInserter, createDictation };
+(SB.lib ||= {}).dictation = { isChrome, hasPicker, mobile, supported, backend, spokenPunctuation, joinText, splitCommands, paragraphBefore, createInserter, createDictation };
 })(globalThis.SB ||= {});

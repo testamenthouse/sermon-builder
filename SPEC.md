@@ -81,7 +81,7 @@ Identical to Writer: tokens `--fg --muted --faint --line --fill --bg --fg-hover 
 
 ## Screens
 
-**Browser check** — the web build runs only in Google Chrome (`supported()` in `app/src/lib/dictation.js`: the `Google Chrome` brand via `navigator.userAgentData` with a UA fallback). Any other browser renders only the `Blocked` card — `Sermon Builder`, a `Get Google Chrome` button (google.com/chrome) and the line `Google Chrome required` — and nothing boots.
+**Browser check** — the web build runs only in desktop Google Chrome (`supported()` in `app/src/lib/dictation.js` = `isChrome()`, the `Google Chrome` brand via `navigator.userAgentData` with a UA fallback, AND `hasPicker()`, `window.showDirectoryPicker` present). Any other browser, and Chrome on Android (no directory picker) or iOS (WebKit, `CriOS`), renders only the `Blocked` card — `Sermon Builder`, a `Get Google Chrome` button (google.com/chrome; omitted when `mobile()` says the device is a phone or tablet, since installing Chrome there changes nothing) and the line `Desktop Google Chrome required` — and nothing boots. Ruling 2026-10-08: the apps are desktop only; there is no phone or tablet storage story and none is planned.
 
 **Gate** — `Sermon Builder` + `Open folder`. **GitHub link on the demo**: when the page is served from a `*.github.io` host, a GitHub mark (18px, `.gh`: faint → fg + fill on hover, padding 6px 8px, radius 6) floats fixed at top 16px / right 20px (z-index 6) linking to the repository in a new tab. Shown on the blocked, gate, library and templates screens, where the corner is free; hidden on the sermon and illustration editors and in Podium, whose tool strips own that corner. Never shown from a local checkout. On the same screens and host a footer line (`.cross`) sits fixed at bottom 16px, centered, 13px faint: `Writing books? Check out Minimalist Writer.` with the name a muted link (new tab, fg on hover). **Writer libraries are refused**: a folder whose listing has `writer.json` in the root, or a `book.json` or `.notes.md` sidecar inside a subfolder, belongs to the Writer app (`shared/library.js` `isWriterLibrary`). Nothing in it is read, seeded or written and the folder is forgotten; on the Pages host the page then navigates straight to Writer, elsewhere the gate shows `This is a Writer library` with an `Open Writer` text link to https://testamenthouse.github.io/minimalist-writer/ (new tab). `Open folder` stays available to pick again. The folder comes from the File System Access API, with the handle in IndexedDB and a `Resume` button when Chrome needs a click.
 
@@ -121,13 +121,14 @@ Every edit marks the file dirty and writes it 0.8s later (flush on hide/pagehide
 - Backspace never deletes a block. Blocks go only through the `…` menu or the outline trash, both of which confirm.
 Bare-verb buttons, no helper text, no emoji, no browser `confirm()`; every delete goes through the Cancel/Delete card. Nothing is created without a name. Book-style folder utility: the folder is the only truth, nothing is cached, `Log out` is the only way to forget it. Content font never touches chrome. Scripture is KJV and always serif. Markdown stays raw in files.
 
-## Phones and touch
+## Narrow windows and touch
 
-Below 760px the app is one column. The rail becomes a drawer: the list button in the fixed top-left pair opens it
+Phones and tablets never reach these screens (see Browser check): the layout below is for a narrow desktop Chrome
+window and for touch screens on a desktop. Below 760px the app is one column. The rail becomes a drawer: the list button in the fixed top-left pair opens it
 over the page, its scrim or any row closes it, and the drawer's top row is where Podium, Print and Download live
 (the tool strip keeps Find, Bible, Illustrations, Dictate and Podium; Delete is in the Sermon modal). The Bible and
 Illustrations panes cover the whole screen, the find bar wraps under the tool strip on its own row, dialogs stack
 their rows, the calendar shows a sermon as its collection tile, the library list keeps Date and Title. On touch
 screens the hover-revealed controls are always visible except rail grips and row trash (reorder and delete through
 the block's … menu); tap targets grow a little. Desktop Chrome is untouched above 760px.
-Folder access needs desktop Chrome: a phone browser has no directory picker, so the gate shows `Desktop Chrome required`.
+The store's boot keeps a fallback status `Desktop Google Chrome required` for a Chrome without a directory picker, but the `Blocked` card already covers that case.

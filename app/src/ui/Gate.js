@@ -3,6 +3,7 @@
 const { html } = SB.lib.html;
 const { useStore, pickFolder, resumeFolder } = SB.store;
 const { WRITER_URL, onPages } = SB.shared.library;
+const { mobile } = SB.lib.dictation;
 // The GitHub Pages demo wears a link to its repo in the top-right corner; local checkouts do not.
 const REPO_URL = 'https://github.com/testamenthouse/sermon-builder', ON_PAGES = onPages();
 function GitHubLink() {
@@ -22,12 +23,13 @@ function Gate() {
     <${GitHubLink} /><${CrossLink} />
   </div>`;
 }
-// The web build outside Google Chrome: nothing else renders.
+// Outside desktop Google Chrome (another browser, or any phone or tablet): nothing else renders.
+// A phone gets no download button; installing Chrome there would not help.
 function Blocked() {
   return html`<div className="gate">
     <h1>Sermon Builder</h1>
-    <a className="pb" href="https://www.google.com/chrome/">Get Google Chrome</a>
-    <div className="status">Google Chrome required</div>
+    ${mobile() ? null : html`<a className="pb" href="https://www.google.com/chrome/">Get Google Chrome</a>`}
+    <div className="status">Desktop Google Chrome required</div>
     <${GitHubLink} /><${CrossLink} />
   </div>`;
 }

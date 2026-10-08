@@ -129,7 +129,7 @@ const sortSermons = list => [...list].sort((a, b) => (b.meta.date || '').localeC
 
 async function boot() {
   applyTheme();
-  if (!fs.supported) return set({ booting: false, gateStatus: 'Desktop Chrome required' });
+  if (!fs.supported) return set({ booting: false, gateStatus: 'Desktop Google Chrome required' });
   try {
     const r = await fs.resume();
     if (r === 'prompt') return set({ booting: false, resumable: true });
