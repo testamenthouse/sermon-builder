@@ -31,7 +31,7 @@ No accounts, no server, no analytics. Everything stays on your machine.
 
 ## Get it
 
-**Mac app (Apple Silicon).** Download the latest `.dmg` from [Releases](../../releases), open it, and drag Sermon Builder to Applications. The app checks for updates on launch and installs them on quit.
+**Mac app (Apple Silicon).** Download the latest `.dmg` from [Releases](https://github.com/testamenthouse/sermon-builder/releases), open it, and drag Sermon Builder to Applications. The app checks for updates on launch and installs them on quit.
 
 **Web version.** Serve this folder with any static server and open it in Google Chrome (see [Running the web version](#running-the-web-version)). Chrome is required because the app opens a folder on your disk through the File System Access API. Other browsers show a "Google Chrome required" screen.
 
@@ -201,14 +201,19 @@ This writes `Sermon Builder-<version>-mac-arm64.dmg` and a matching `.zip` into 
 
 **Publish a release**
 
-Bump `version` in `desktop/package.json`, then push a tag:
+Releases are built and published from your own Mac. Nothing runs automatically on GitHub; the workflows under `.github/workflows` are kept for reference and only run when started by hand.
+
+Bump `version` in `desktop/package.json`, then:
 
 ```sh
-git tag v0.2.0
-git push origin v0.2.0
+cd desktop
+GH_TOKEN=<github token with repo scope> \
+CSC_LINK=<Developer ID certificate .p12, base64> CSC_KEY_PASSWORD=<its password> \
+APPLE_ID=<apple id> APPLE_APP_SPECIFIC_PASSWORD=<app-specific password> APPLE_TEAM_ID=<team id> \
+npm run release
 ```
 
-The [release workflow](.github/workflows/release.yml) runs the tests, builds on macOS, signs and notarizes, and uploads the DMG and zip to a GitHub release. It needs these repository secrets: `MAC_CERT_P12_BASE64`, `MAC_CERT_PASSWORD`, `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD`, `APPLE_TEAM_ID`. Running `npm run release` locally does the same with the same variables in your environment.
+This builds, signs and notarizes the app and uploads the DMG and zip to a GitHub release named after the version. Without the signing variables the build still succeeds, but macOS will refuse to open the result on other machines and the updater will not install it.
 
 Installed apps check GitHub Releases on launch and every hour, download quietly, and install on quit. The app menu offers **Restart to Update** when one is ready.
 
@@ -228,7 +233,7 @@ npm install
 npm run dev        # serves this folder on http://localhost:5188
 ```
 
-Open it in Google Chrome. Any static server over the repo folder works the same, including GitHub Pages on the repo root.
+Open it in Google Chrome. Any static server over the repo folder works the same. GitHub Pages serves this repo from its root, so the published web version is https://testamenthouse.github.io/sermon-builder/
 
 ```sh
 npm test           # file format round-trips, Bible lookup, outline, dictation, MCP end to end
@@ -248,6 +253,7 @@ desktop/        Electron shell, electron-builder config, Swift dictation helper,
 tests/          node --test
 samples/        A small library to open on first run
 vendor/         Browser builds of React and htm (generated, never edited by hand)
+.github/        Release and test workflows, manual-only (nothing runs automatically)
 SPEC.md         The full behavior spec: every screen, rule and file-format detail
 DESIGN-NOTES.md The design decision log
 ```

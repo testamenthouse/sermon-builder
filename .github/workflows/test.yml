@@ -1,9 +1,6 @@
 name: Test
 
-on:
-  push:
-    branches: [main]
-  pull_request:
+on: workflow_dispatch   # disabled: no automatic runs; trigger by hand if ever needed
 
 jobs:
   test:

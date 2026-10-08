@@ -1,4 +1,4 @@
-appId: com.fegter.sermonbuilder
+appId: com.testamenthouse.sermonbuilder
 productName: Sermon Builder
 artifactName: ${productName}-${version}-${os}-${arch}.${ext}
 directories:
