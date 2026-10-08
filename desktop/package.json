@@ -4,11 +4,10 @@
   "version": "0.1.0",
   "private": true,
   "description": "Sermon Builder",
-  "author": "Brian Fegter",
   "main": "src/main.js",
   "repository": {
     "type": "git",
-    "url": "https://github.com/OWNER/sermon-builder.git"
+    "url": "https://github.com/testamenthouse/sermon-builder.git"
   },
   "scripts": {
     "sync": "node scripts/sync.js",

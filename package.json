@@ -4,7 +4,6 @@
   "private": true,
   "type": "module",
   "description": "Sermon Builder",
-  "author": "Brian Fegter",
   "scripts": {
     "dev": "node scripts/serve.js",
     "vendor": "node scripts/vendor.js",

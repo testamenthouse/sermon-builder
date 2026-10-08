@@ -3,7 +3,7 @@
 Local Claude (Claude Code or Claude Desktop) builds sermons straight into the library folder the app has open. The app watches the folder, so every tool call shows up live.
 
 ```sh
-claude mcp add sermon-builder -- node ~/Sites/sermon-builder/mcp/server.js
+claude mcp add sermon-builder -- node /path/to/sermon-builder/mcp/server.js
 ```
 
 Settings → Claude → **Copy** in the app puts that exact command on the clipboard (the packaged app points at its bundled copy of the server).
