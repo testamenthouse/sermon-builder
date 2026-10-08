@@ -2,7 +2,9 @@
 
 A minimalist, offline sermon editor that runs in Google Chrome. You write a sermon as a stack of typed blocks, the King James Bible fills in scripture as you type a reference, Podium mode puts the sermon on screen while you preach, and the whole library is a plain folder of Markdown files you own.
 
-**Try it now:** https://testamenthouse.github.io/sermon-builder/ (Google Chrome, then pick any folder)
+**Try it now, or use it forever, without downloading anything:** https://testamenthouse.github.io/sermon-builder/
+
+Open that link in Google Chrome and pick a folder for your sermons. That is the full app, not a demo. Nothing is installed, and no data is shared with anyone: nothing is sent to a server, and the page never sees your files. Everything stays on your own computer, in the folder you chose.
 
 **Or run it yourself, no technical knowledge needed:** download the folder and double-click `index.html`. That is the whole setup. There is nothing to install, no build step and no server, and your sermons never leave your machine.
 
