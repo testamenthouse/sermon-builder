@@ -1,0 +1,1 @@
+try{var s=JSON.parse(localStorage.getItem('sermon.settings')),t=s&&s.theme;document.documentElement.dataset.theme=t==='dark'||(t!=='light'&&matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light'}catch(e){}

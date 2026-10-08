@@ -1,0 +1,31 @@
+{
+  "name": "sermon-builder-desktop",
+  "productName": "Sermon Builder",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Sermon Builder",
+  "author": "Brian Fegter",
+  "main": "src/main.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/OWNER/sermon-builder.git"
+  },
+  "scripts": {
+    "sync": "node scripts/sync.js",
+    "start": "npm run sync && electron .",
+    "smoke": "npm run sync && SERMON_SMOKE=1 electron .",
+    "dist": "npm run sync && electron-builder --publish never",
+    "release": "npm run sync && electron-builder --publish always"
+  },
+  "dependencies": {
+    "electron-updater": "^6.8.9"
+  },
+  "devDependencies": {
+    "electron": "^44.6.0",
+    "electron-builder": "^26.15.3"
+  },
+  "allowScripts": {
+    "electron@44.7.0": true,
+    "electron-builder@26.15.3": true
+  }
+}

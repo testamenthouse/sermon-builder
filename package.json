@@ -1,0 +1,20 @@
+{
+  "name": "sermon-builder",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Sermon Builder",
+  "author": "Brian Fegter",
+  "scripts": {
+    "dev": "node scripts/serve.js",
+    "vendor": "node scripts/vendor.js",
+    "test": "node --test tests/*.test.js",
+    "kjv": "node scripts/build-kjv.js",
+    "mcp": "node mcp/server.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.0",
+    "zod": "^3.24.0"
+  },
+  "devDependencies": {}
+}
