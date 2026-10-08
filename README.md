@@ -27,6 +27,7 @@ No accounts, no server, no analytics. Everything stays on your machine.
 - **Templates.** A starter set of sermon shapes (Three Point, Verse by Verse, Topical, Funeral, Wedding, and more). Edit them, add your own, or save any sermon as one.
 - **Dictation.** Speak into any block. On the Mac the speech recognition runs on-device through Apple's own recognizer.
 - **Calendar.** See your preaching dates by month and drag a sermon to a different day.
+- **Show in Finder.** In the Mac app, a sermon's settings open its file in Finder.
 - **Claude.** Point Claude Code or Claude Desktop at the same folder and it can draft, read, and edit sermons live in the app.
 
 ## Get it
@@ -257,4 +258,6 @@ vendor/         Browser builds of React and htm (generated, never edited by hand
 SPEC.md         The full behavior spec: every screen, rule and file-format detail
 ```
 
-Scripture text is the King James Version, public domain.
+## License
+
+[GPL-3.0](LICENSE). Scripture text is the King James Version, public domain.

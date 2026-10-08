@@ -1,5 +1,6 @@
 import { html } from '../lib/html.js';
 import { useEffect, useRef, useState } from 'react';
+import { fs } from '../fs/index.js';
 import { useStore, set, stop, closeMenus, createSermon, openSermon, commitMeta, deleteSermon, sermonOf, setSettings, logout, pickFolder, flash, setCollectionColor, renameCollection, deleteCollection, createCollection, get, DEFAULTS, stopDictation } from '../store.js';
 import { STATUSES } from '../../../shared/format.js';
 import { doPrint } from '../lib/print.js';
@@ -79,6 +80,7 @@ function SermonForm({ m, collections, templates }) {
     <div className="acts"><button className="cb" onClick=${closeMenus}>Cancel</button><button className="pb sm" onClick=${save}>Save</button></div>
     ${existing && html`<><div className="hair" />
       ${!isTpl && html`<button className="full" onClick=${asTemplate}>Save as template</button>`}
+      ${fs.reveal && html`<button className="full" onClick=${() => { closeMenus(); fs.reveal(m.path); }}>${/Mac/.test(navigator.platform) ? 'Show in Finder' : 'Show in Explorer'}</button>`}
       <button className="full" onClick=${() => set({ confirm: { title: meta.title, onYes: () => deleteSermon(m.path) } })}>${isTpl ? 'Delete template' : 'Delete sermon'}</button></>`}
   <//>`;
 }

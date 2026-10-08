@@ -80,6 +80,7 @@ export const fsa = {
   },
   async mcp() { return ''; },
   async libraryPath() { return ''; },
+  reveal: null, // Show in Finder needs a path; the browser has none
   // Headless QA: hand the adapter a directory handle (e.g. OPFS root) without the picker.
   __setLibrary(h) { root = h; }
 };

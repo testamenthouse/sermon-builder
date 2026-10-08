@@ -68,6 +68,7 @@ function wireIpc() {
   ipcMain.handle('lib:forget', async () => { stopWatch(); library = null; writeConfig({ library: null }); });
   ipcMain.handle('lib:path', async () => library || '');
   ipcMain.handle('lib:mcp', async () => mcpCommand());
+  ipcMain.handle('lib:reveal', async (e, p) => { shell.showItemInFolder(inside(p)); });
   ipcMain.handle('fs:list', async () => { const out = []; await walk(inside(''), '', out); return out; });
   ipcMain.handle('fs:read', (e, p) => fsp.readFile(inside(p), 'utf8'));
   ipcMain.handle('fs:write', async (e, p, text) => { const abs = inside(p); await fsp.mkdir(path.dirname(abs), { recursive: true }); const tmp = abs + '.tmp-' + process.pid; await fsp.writeFile(tmp, text, 'utf8'); await fsp.rename(tmp, abs); });

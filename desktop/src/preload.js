@@ -5,7 +5,7 @@ contextBridge.exposeInMainWorld('sermon', {
   pick: () => call('lib:pick'), resume: () => call('lib:resume'), forget: () => call('lib:forget'),
   list: () => call('fs:list'), read: p => call('fs:read', p), write: (p, t) => call('fs:write', p, t), remove: p => call('fs:remove', p), rename: (a, b) => call('fs:rename', a, b), mkdir: p => call('fs:mkdir', p),
   watch: cb => { const h = () => cb(null); ipcRenderer.on('lib:changed', h); return () => ipcRenderer.removeListener('lib:changed', h); },
-  mcp: () => call('lib:mcp'), libraryPath: () => call('lib:path')
+  mcp: () => call('lib:mcp'), libraryPath: () => call('lib:path'), reveal: p => call('lib:reveal', p)
 });
 // Dictation: start/stop the native helper (desktop/src/dictate.js) and receive its events.
 contextBridge.exposeInMainWorld('dictate', {
