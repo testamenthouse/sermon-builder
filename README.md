@@ -255,7 +255,6 @@ samples/        A small library to open on first run
 vendor/         Browser builds of React and htm (generated, never edited by hand)
 .github/        Release and test workflows, manual-only (nothing runs automatically)
 SPEC.md         The full behavior spec: every screen, rule and file-format detail
-DESIGN-NOTES.md The design decision log
 ```
 
 Scripture text is the King James Version, public domain.
