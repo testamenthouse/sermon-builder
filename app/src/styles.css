@@ -41,6 +41,9 @@ input,textarea,select{font:inherit;color:inherit;background:none}
 .gate a.pb,.gate a.tb{text-decoration:none}
 .gh{position:fixed;top:16px;right:20px;z-index:6;display:inline-flex;align-items:center;padding:6px 8px;border-radius:6px;color:var(--faint)}
 .gh:hover{color:var(--fg);background:var(--fill)}
+.cross{position:fixed;left:0;right:0;bottom:16px;z-index:6;text-align:center;font-size:13px;color:var(--faint);pointer-events:none}
+.cross a{color:var(--muted);text-decoration:none;pointer-events:auto}
+.cross a:hover{color:var(--fg)}
 .gate a.pb:hover{color:var(--bg)}
 
 /* library */

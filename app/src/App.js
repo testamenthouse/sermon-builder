@@ -3,7 +3,7 @@
 const { html } = SB.lib.html;
 const { useEffect } = React;
 const { useStore, set, boot, saveNow, closeMenus, get, toggleBible, toggleIll, closeLibFind, toggleDictation, stopDictation } = SB.store;
-const { Gate, Blocked, GitHubLink } = SB.ui.Gate;
+const { Gate, Blocked, GitHubLink, CrossLink } = SB.ui.Gate;
 const { supported } = SB.lib.dictation;
 const { Library } = SB.ui.Library;
 const { Sermon } = SB.ui.Sermon;
@@ -38,7 +38,7 @@ function App() {
   return html`<>
     ${screen === 'sermon' ? html`<${Sermon} />` : screen === 'illustrations' ? html`<${Illustrations} />` : screen === 'templates' ? html`<${Templates} />` : html`<${Library} />`}
     ${podium && html`<${Podium} />`}
-    ${!podium && (screen === 'library' || screen === 'templates') && html`<${GitHubLink} />`}
+    ${!podium && (screen === 'library' || screen === 'templates') && html`<><${GitHubLink} /><${CrossLink} /></>`}
     <${SermonModal} /><${CollectionModal} /><${PrintMenu} /><${Settings} /><${KindColors} /><${NameDialog} /><${Confirm} /><${Alert} /><${DictationBar} /><${DictationStop} />
   </>`;
 }

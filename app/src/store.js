@@ -7,7 +7,7 @@ const { fs } = SB.fs;
 const { parseSermon, serializeSermon, normalizeMeta, slugify, newId, parseMeta } = SB.shared.format;
 const { illustrationBody } = SB.shared.illustrations;
 const { seedTemplates, TEMPLATES_DIR } = SB.shared.templates;
-const { isWriterLibrary, WRITER_URL } = SB.shared.library;
+const { isWriterLibrary, WRITER_URL, onPages } = SB.shared.library;
 const { KIND, DEFAULT_KIND_COLORS } = SB.shared.blocks;
 const { groupRange, moveRange, moveStep, canInsert, canSwitch } = SB.shared.outline;
 const { loadBible, lookupNow, passageText } = SB.lib.bible;
@@ -101,7 +101,8 @@ async function writeSettings() {
 async function loadLibrary(name) {
   const list = await fs.list();
   // A Writer library is refused before anything is read, seeded or written, and the folder is forgotten; the gate links to Writer.
-  if (isWriterLibrary(list)) { await fs.forget(); set({ booting: false, folderOpen: false, resumable: false, gateStatus: 'This is a Writer library', gateLink: WRITER_URL }); return; }
+  // On the GitHub Pages host the sister app is one hop away, so go straight there; a local copy shows the gate with the link.
+  if (isWriterLibrary(list)) { await fs.forget(); if (onPages()) { location.href = WRITER_URL; return; } set({ booting: false, folderOpen: false, resumable: false, gateStatus: 'This is a Writer library', gateLink: WRITER_URL }); return; }
   const sermons = [], illustrations = [], seriesMap = new Map(); sigs = new Map();
   for (const e of list) {
     sigs.set(e.path, e.kind + ':' + e.mtime + ':' + e.size);
