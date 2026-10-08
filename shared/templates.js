@@ -1,5 +1,5 @@
 // The starter templates. They are seeded into a library's Templates/ folder the first time it opens without one;
-// from then on the folder is the only source (edit, rename, delete, add — the app and the MCP server read the files).
+// from then on the folder is the only source (edit, rename, delete, add — the app reads the files).
 (function (SB) {
 'use strict';
 const { serializeSermon, normalizeMeta, slugify, newId } = SB.shared.format;

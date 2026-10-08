@@ -1,4 +1,4 @@
-// Node entry for the shared code. The files are classic scripts (so the page opens from a double-clicked index.html with
+// Node entry for the shared code (the tests). The files are classic scripts (so the page opens from a double-clicked index.html with
 // no server); this loads them in dependency order, the same order index.html uses, and exports their namespaces.
 import './books.js';
 import './bible.js';

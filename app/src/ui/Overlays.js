@@ -2,7 +2,6 @@
 'use strict';
 const { html } = SB.lib.html;
 const { useEffect, useRef, useState } = React;
-const { fs } = SB.fs;
 const { useStore, set, stop, closeMenus, createSermon, openSermon, commitMeta, deleteSermon, sermonOf, setSettings, logout, pickFolder, flash, setCollectionColor, renameCollection, deleteCollection, createCollection, get, DEFAULTS, stopDictation } = SB.store;
 const { STATUSES } = SB.shared.format;
 const { doPrint } = SB.lib.print;
@@ -82,7 +81,6 @@ function SermonForm({ m, collections, templates }) {
     <div className="acts"><button className="cb" onClick=${closeMenus}>Cancel</button><button className="pb sm" onClick=${save}>Save</button></div>
     ${existing && html`<><div className="hair" />
       ${!isTpl && html`<button className="full" onClick=${asTemplate}>Save as template</button>`}
-      ${fs.reveal && html`<button className="full" onClick=${() => { closeMenus(); fs.reveal(m.path); }}>${/Mac/.test(navigator.platform) ? 'Show in Finder' : 'Show in Explorer'}</button>`}
       <button className="full" onClick=${() => set({ confirm: { title: meta.title, onYes: () => deleteSermon(m.path) } })}>${isTpl ? 'Delete template' : 'Delete sermon'}</button></>`}
   <//>`;
 }
@@ -125,10 +123,9 @@ function PrintMenu() {
 }
 
 function Settings() {
-  const o = useStore(s => s.settingsOpen); const st = useStore(s => s.settings); const libName = useStore(s => s.libName); const mcp = useStore(s => s.mcpCommand);
+  const o = useStore(s => s.settingsOpen); const st = useStore(s => s.settings); const libName = useStore(s => s.libName);
   if (!o) return null;
   const Seg = ({ k, opts, fmt = x => x }) => html`<div className="seg">${opts.map(v => html`<button key=${v} className=${st[k] === v ? 'on' : ''} onClick=${() => setSettings({ [k]: v })}>${fmt(v)}</button>`)}</div>`;
-  const copyMcp = async () => { try { await navigator.clipboard.writeText(mcp); flash('Copied'); } catch (e) { flash('Could not copy'); } };
   return html`<${Scrim} onClose=${closeMenus}>
     <div className="r"><label>Folder</label><span style=${{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>${libName}</span><button className="tb" onClick=${async () => { closeMenus(); await logout(); pickFolder(); }}>Change</button></div>
     <div className="r"><label>Font</label><${Seg} k="font" opts=${['sans', 'serif', 'mono', 'courier']} /></div>
@@ -136,7 +133,6 @@ function Settings() {
     <div className="r"><label>Theme</label><${Seg} k="theme" opts=${['system', 'light', 'dark']} fmt=${cap} /></div>
     <div className="r"><label>Podium text size</label><${Seg} k="podium" opts=${[24, 28, 32, 36]} /><span className="status">px</span></div>
     <div className="r"><label>Colors</label><div className="kc-row" style=${{ flex: 1 }}>${KINDS.filter(k => (st.colors || {})[k.kind]).map(k => html`<span key=${k.kind} className="kc-dot" style=${{ background: st.colors[k.kind] }} />`)}</div><button className="tb" onClick=${() => set({ settingsOpen: false, colorsOpen: true })}>Edit</button></div>
-    ${mcp && html`<div className="r"><label>Claude</label><span className="status" style=${{ flex: 1 }}>MCP</span><button className="tb" onClick=${copyMcp}>Copy</button></div>`}
     <div className="hair" style=${{ paddingTop: 10 }}><button className="full" onClick=${() => { closeMenus(); logout(); }}>Log out</button></div>
   <//>`;
 }

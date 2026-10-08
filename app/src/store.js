@@ -27,7 +27,7 @@ let state = {
   status: '', libView: { series: 'collections', collection: 'collections' }[ls('sermon.libview', 'collections')] || ls('sermon.libview', 'collections'), libLayout: ls('sermon.liblayout', 'cards'), libQuery: '', libFindOpen: false,
   railMin: ls('sermon.rail', 'max') === 'min', biblePane: ls('sermon.bible', 'closed') === 'open', illPane: ls('sermon.ill', 'closed') === 'open', illReturn: null, podium: false,
   findOpen: false, find: '', findIdx: 0, findCount: 0,
-  sermonModal: null, newDialog: false, printMenu: false, settingsOpen: false, confirm: null, kindMenu: null, mcpCommand: '', fold: {}, colorsOpen: false,
+  sermonModal: null, newDialog: false, printMenu: false, settingsOpen: false, confirm: null, kindMenu: null, fold: {}, colorsOpen: false,
   alert: null, dictation: null, dictPartial: '', dictLevel: 0, dictNote: '',
   narrow: NARROW.matches, drawer: false
 };
@@ -123,7 +123,6 @@ async function loadLibrary(name) {
   set({ libName: name, sermons: sortSermons(sermons), collections, illustrations: illustrations.sort((a, b) => a.meta.title.localeCompare(b.meta.title)), folderOpen: true, booting: false, resumable: false, gateStatus: '', gateLink: '', screen: 'library', openPath: null, settingsOpen: false });
   startWatch();
   loadBible().catch(() => flash('Bible not loaded'));
-  fs.mcp().then(mcpCommand => set({ mcpCommand })).catch(() => {});
 }
 const sortSermons = list => [...list].sort((a, b) => (b.meta.date || '').localeCompare(a.meta.date || '') || a.meta.title.localeCompare(b.meta.title));
 

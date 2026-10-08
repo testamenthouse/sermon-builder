@@ -1,5 +1,5 @@
 // Illustration library ↔ sermon glue. A sermon uses an illustration when an illustration block's heading is its title,
-// so the link survives hand edits, MCP writes and files with no extra markup.
+// so the link survives hand edits and files with no extra markup.
 (function (SB) {
 'use strict';
 const norm = s => String(s || '').trim().toLowerCase();

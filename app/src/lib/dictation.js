@@ -1,9 +1,7 @@
-// Dictation. The Mac app talks to the system speech recognizer through the window.dictate bridge
-// (desktop/src/dictate.js → bin/dictate, on-device Speech.framework); the browser build uses Chrome's Web
-// Speech API and refuses other browsers. Final segments go into a contenteditable through execCommand so the
+// Dictation through Chrome's Web Speech API; other browsers are refused. Final segments go into a contenteditable through execCommand so the
 // editor's own input path (serialize, decorate, autosave, undo) runs unchanged; the partial segment is only
 // previewed. "new paragraph" / "new line" inside a segment break the paragraph; "period", "comma",
-// "question mark" and the other spoken marks become punctuation (neither desktop engine does that itself).
+// "question mark" and the other spoken marks become punctuation (the engine does not do that itself).
 (function (SB) {
 'use strict';
 const isChrome = () => {
@@ -12,12 +10,11 @@ const isChrome = () => {
   const ua = navigator.userAgent;
   return /Chrome\//.test(ua) && !/Edg\/|OPR\/|Brave|SamsungBrowser|CriOS|Vivaldi|YaBrowser/.test(ua);
 };
-const native = () => typeof window !== 'undefined' && !!window.dictate;
-// The app itself runs only where its folder access and dictation work: the Mac app (native bridge) or Google Chrome on the web.
-const supported = () => native() || isChrome();
+// The app itself runs only where its folder access and dictation work: Google Chrome.
+const supported = () => isChrome();
 const WebSR = () => window.SpeechRecognition || window.webkitSpeechRecognition;
-// 'native' | 'web' | null (null on the web outside Chrome: the caller shows the Chrome alert)
-function backend() { if (native()) return 'native'; if (WebSR() && isChrome()) return 'web'; return null; }
+// 'web' | null (null outside Chrome: the caller shows the Chrome alert)
+function backend() { return WebSR() && isChrome() ? 'web' : null; }
 
 // ---- spoken punctuation, the way macOS Dictation reads it: the command word becomes its mark, attached to the
 // word before it (an opening mark to the word after it), and the next word is capitalized after a sentence end.
@@ -108,20 +105,6 @@ function createDictation({ onState, onPartial, onFinal, onError, onLevel = () =>
   let active = false, off = null, rec = null, closing = null;
   const finish = () => { if (!active && !closing) return; active = false; clearTimeout(closing); closing = null; if (off) { off(); off = null; } onState('off'); };
   const be = backend();
-  const startNative = lang => {
-    off = window.dictate.on(ev => {
-      if (ev.t === 'ready') onState('listening');
-      else if (ev.t === 'partial') onPartial(spokenPunctuation(ev.text));
-      else if (ev.t === 'final') { onPartial(''); if (ev.text) onFinal(ev.text); }
-      else if (ev.t === 'level') onLevel(+ev.v || 0);
-      else if (ev.t === 'note') onError(ev.msg);
-      else if (ev.t === 'log') console.log('dictate: ' + ev.msg);
-      else if (ev.t === 'denied') onError(ev.what === 'microphone' ? 'Microphone blocked' : 'Speech recognition blocked');
-      else if (ev.t === 'error') onError(ev.msg || 'Dictation failed');
-      else if (ev.t === 'exit') finish();
-    });
-    window.dictate.start(lang).then(ok => { if (!ok) finish(); });
-  };
   const startWeb = lang => {
     const R = WebSR(); rec = new R(); rec.continuous = true; rec.interimResults = true; rec.lang = lang || navigator.language || 'en-US';
     let fatal = false;
@@ -144,14 +127,14 @@ function createDictation({ onState, onPartial, onFinal, onError, onLevel = () =>
   };
   return {
     backend: be,
-    start(lang) { if (active || !be) return; active = true; onState('starting'); if (be === 'native') startNative(lang); else startWeb(lang); },
+    start(lang) { if (active || !be) return; active = true; onState('starting'); startWeb(lang); },
     stop() {
       if (!active) return; active = false;
       closing = setTimeout(finish, 3000);
-      if (be === 'native') window.dictate.stop(); else if (rec) { try { rec.stop(); } catch (err) { finish(); } }
+      if (rec) { try { rec.stop(); } catch (err) { finish(); } }
     },
     get active() { return active; }
   };
 }
-(SB.lib ||= {}).dictation = { isChrome, native, supported, backend, spokenPunctuation, joinText, splitCommands, paragraphBefore, createInserter, createDictation };
+(SB.lib ||= {}).dictation = { isChrome, supported, backend, spokenPunctuation, joinText, splitCommands, paragraphBefore, createInserter, createDictation };
 })(globalThis.SB ||= {});

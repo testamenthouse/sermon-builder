@@ -1,6 +1,6 @@
 # Sermon Builder
 
-A minimalist, offline sermon editor for the Mac (and Chrome). You write a sermon as a stack of typed blocks, the King James Bible fills in scripture as you type a reference, Podium mode puts the sermon on screen while you preach, and the whole library is a plain folder of Markdown files you own.
+A minimalist, offline sermon editor that runs in Google Chrome. You write a sermon as a stack of typed blocks, the King James Bible fills in scripture as you type a reference, Podium mode puts the sermon on screen while you preach, and the whole library is a plain folder of Markdown files you own.
 
 **Try it now:** https://testamenthouse.github.io/sermon-builder/ (Google Chrome, then pick any folder)
 
@@ -11,7 +11,7 @@ A minimalist, offline sermon editor for the Mac (and Chrome). You write a sermon
 3. Open the folder and double-click `index.html`. If it opens in another browser, right-click it and choose **Open With → Google Chrome**.
 4. Click **Open folder** and pick where your sermons should live.
 
-The desktop app under [Get it](#get-it) is the same page in a window, with on-device dictation and automatic updates.
+Chrome has everything the app needs, dictation included.
 
 **There is no database.** The only storage is the folder you choose. The whole app runs off that folder: every sermon, collection, template, illustration and setting is a file in it, read and written directly. No accounts, no server, no analytics. Everything stays on your machine.
 
@@ -22,9 +22,7 @@ The desktop app under [Get it](#get-it) is the same page in a window, with on-de
 - [Preaching from it](#preaching-from-it)
 - [Printing and exporting](#printing-and-exporting)
 - [Dictation](#dictation)
-- [Working with Claude](#working-with-claude)
 - [Keyboard shortcuts](#keyboard-shortcuts)
-- [Building the desktop app](#building-the-desktop-app)
 - [Running the web version](#running-the-web-version)
 - [Repository layout](#repository-layout)
 
@@ -36,20 +34,18 @@ The desktop app under [Get it](#get-it) is the same page in a window, with on-de
 - **Podium mode.** Fullscreen, one block at a time, a countdown clock set to your target length, your notes on or off, and an outline to jump around.
 - **Print and export.** Manuscript, outline, or handout on Letter paper. Markdown and Word downloads. A verse-list PDF for the media team.
 - **Templates.** A starter set of sermon shapes (Three Point, Verse by Verse, Topical, Funeral, Wedding, and more). Edit them, add your own, or save any sermon as one.
-- **Dictation.** Speak into any block. On the Mac the speech recognition runs on-device through Apple's own recognizer.
+- **Dictation.** Speak into any block, through Chrome's speech engine.
 - **Calendar.** See your preaching dates by month and drag a sermon to a different day.
-- **Show in Finder.** In the Mac app, a sermon's settings open its file in Finder.
-- **Claude.** Point Claude Code or Claude Desktop at the same folder and it can draft, read, and edit sermons live in the app.
 
 ## Get it
-
-**Mac app (Apple Silicon).** Download the latest `.dmg` from [Releases](https://github.com/testamenthouse/sermon-builder/releases), open it, and drag Sermon Builder to Applications. The app checks for updates on launch and installs them on quit.
 
 **Web version.** Open the app in Google Chrome:
 
 https://testamenthouse.github.io/sermon-builder/
 
-Or download this repo and double-click `index.html` (see [Running the web version](#running-the-web-version)). Chrome is required because the app opens a folder on your disk through the File System Access API. Other browsers show a "Google Chrome required" screen.
+**Your own copy.** Download the ZIP and double-click `index.html`, as described at the top. Same app, no server.
+
+Chrome is required because the app opens a folder on your disk through the File System Access API. Other browsers show a "Google Chrome required" screen.
 
 Phones and tablets can read a library over the web version when the layout collapses to one column, but they cannot open a folder. Writing happens on a desktop.
 
@@ -152,20 +148,7 @@ Click the mic in the sermon tools or press `⌘⇧D`. Words land at the caret, i
 
 Speak punctuation the way macOS Dictation expects: `period`, `comma`, `question mark`, `open quote`, `new paragraph`, and so on.
 
-- **Mac app:** recognition runs on-device through Apple's Speech framework. The first use asks for microphone and speech recognition permission. macOS Dictation must be turned on in System Settings → Keyboard → Dictation.
-- **Web version:** uses Chrome's speech engine. Other browsers cannot dictate.
-
-## Working with Claude
-
-The repo ships an [MCP server](mcp/README.md) that works on the same folder the app has open. Claude can list and read sermons, create and edit them block by block, look up and search the KJV, and use your illustration library. The app watches the folder, so every change shows up live. Nothing in the server can delete a sermon.
-
-Settings → Claude → **Copy** puts the exact command on your clipboard. For a checkout of this repo:
-
-```sh
-claude mcp add sermon-builder -- node /path/to/sermon-builder/mcp/server.js
-```
-
-The server finds the library through `$SERMON_LIBRARY`, or through the path the app saved when you opened a folder.
+uses Chrome's speech engine. Other browsers cannot dictate.
 
 ## Keyboard shortcuts
 
@@ -185,75 +168,18 @@ The server finds the library through `$SERMON_LIBRARY`, or through the path the 
 | `Enter` in a scripture heading | Fill in the KJV text |
 | `Esc` | Close pane, dialog, find, or Podium |
 
-## Building the desktop app
-
-The Mac app is an [Electron](https://www.electronjs.org/) shell around the web app, built with electron-builder. It targets Apple Silicon only.
-
-**You need**
-
-- Node.js 22
-- Xcode command line tools (`xcode-select --install`) for the Swift dictation helper
-- For a signed, notarized release: a Developer ID certificate and an Apple ID app-specific password
-
-**Run it locally**
-
-```sh
-git clone https://github.com/testamenthouse/sermon-builder.git
-cd sermon-builder
-npm install
-cd desktop && npm install
-env -u ELECTRON_RUN_AS_NODE npm start
-```
-
-`npm start` first runs `npm run sync`, which copies the web app into `desktop/app`, bundles the MCP server and KJV so the packaged app can hand Claude a server that exists outside the repo, and compiles `dictate/dictate.swift` into `bin/dictate`.
-
-**Build an installer**
-
-```sh
-cd desktop
-npm run dist
-```
-
-This writes `Sermon Builder-<version>-mac-arm64.dmg` and a matching `.zip` into `desktop/dist`. The zip is what the auto-updater needs.
-
-**Publish a release**
-
-Releases are built and published from your own Mac. Nothing runs automatically on GitHub; the workflows under `.github/workflows` are kept for reference and only run when started by hand.
-
-Bump `version` in `desktop/package.json`, then:
-
-```sh
-cd desktop
-GH_TOKEN=<github token with repo scope> \
-CSC_LINK=<Developer ID certificate .p12, base64> CSC_KEY_PASSWORD=<its password> \
-APPLE_ID=<apple id> APPLE_APP_SPECIFIC_PASSWORD=<app-specific password> APPLE_TEAM_ID=<team id> \
-npm run release
-```
-
-This builds, signs and notarizes the app and uploads the DMG and zip to a GitHub release named after the version. Without the signing variables the build still succeeds, but macOS will refuse to open the result on other machines and the updater will not install it.
-
-Installed apps check GitHub Releases on launch and every hour, download quietly, and install on quit. The app menu offers **Restart to Update** when one is ready.
-
-**Troubleshooting**
-
-- *Electron starts as plain Node, or nothing opens.* VS Code terminals set `ELECTRON_RUN_AS_NODE=1`. Unset it, as in the commands above.
-- *npm reports blocked install scripts.* Run `npm approve-scripts esbuild` in the repo root and `npm approve-scripts electron electron-builder` in `desktop/`, then `node node_modules/electron/install.js` in `desktop/`.
-- *Dictation crashes or never prompts in a dev run.* The dev script already handles this (the helper disclaims the terminal as its responsible process). If macOS Dictation itself is off, the app tells you and opens the settings pane.
-- *`npm run smoke`* runs a headless load check and exits. `DICTATE_BIN=<script> npm run smoke` drives the dictation bridge with a fake helper.
-
 ## Running the web version
 
 There is no build step. Double-click `index.html` and Chrome runs the source as it is: every file is a classic script, loaded in order by `index.html`, with React and htm vendored in `vendor/` and the King James Bible in `data/kjv/kjv.js`. A static server works too, and GitHub Pages serves this repo from its root, so the published web version is https://testamenthouse.github.io/sermon-builder/
 
 ```sh
-npm install
 npm run dev        # serves this folder on http://localhost:5188, if you prefer a server
 ```
 
-Adding a file means adding its `<script>` tag to `index.html` after the files it reads from; `npm test` checks the order. Node code (the MCP server and the tests) loads the same files through `shared/node.js` and `app/src/lib/node.js`.
+Adding a file means adding its `<script>` tag to `index.html` after the files it reads from; `npm test` checks the order. The tests load the same files through `shared/node.js` and `app/src/lib/node.js`.
 
 ```sh
-npm test           # file format round-trips, Bible lookup, outline, dictation, MCP end to end
+npm test           # file format round-trips, Bible lookup, outline, dictation, script order
 npm run vendor     # refresh vendor/ from unpkg after changing a version in scripts/vendor.js
 npm run kjv        # rebuild data/kjv/kjv.js
 ```
@@ -263,14 +189,12 @@ npm run kjv        # rebuild data/kjv/kjv.js
 ```
 index.html      The app page. Double-click it and it runs.
 app/            The UI: React through htm tagged templates, no JSX, no build, no modules
-shared/         Pure modules shared by the app, MCP server and tests (file format, Bible, outline, templates)
+shared/         Pure modules shared by the app and the tests (file format, Bible, outline, templates)
 data/kjv/       The King James Bible, 66 books, 31,102 verses (public domain)
-mcp/            MCP server for Claude
-desktop/        Electron shell, electron-builder config, Swift dictation helper, update wiring
 tests/          node --test
 samples/        A small library to open on first run
 vendor/         Browser builds of React and htm (generated, never edited by hand)
-.github/        Release and test workflows, manual-only (nothing runs automatically)
+.github/        Test workflow, manual-only (nothing runs automatically)
 SPEC.md         The full behavior spec: every screen, rule and file-format detail
 ```
 

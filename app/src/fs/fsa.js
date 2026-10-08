@@ -1,5 +1,5 @@
 // Browser adapter: File System Access API. The folder handle is remembered in IndexedDB; nothing else is stored.
-// Same interface as the Electron bridge (see ../../../desktop/src/preload.js). Paths are relative, forward-slashed.
+// Paths are relative, forward-slashed.
 (function (SB) {
 'use strict';
 const DB = 'sermon', STORE = 'kv', KEY = 'lib';
@@ -80,9 +80,6 @@ const fsa = {
     arm(300);
     return () => { stopped = true; clearTimeout(timer); document.removeEventListener('visibilitychange', vis); };
   },
-  async mcp() { return ''; },
-  async libraryPath() { return ''; },
-  reveal: null, // Show in Finder needs a path; the browser has none
   // Headless QA: hand the adapter a directory handle (e.g. OPFS root) without the picker.
   __setLibrary(h) { root = h; }
 };
