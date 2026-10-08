@@ -1,0 +1,152 @@
+# Sermon Builder
+
+A minimalist, offline, block-based sermon builder for the Mac — Writer's design philosophy (`~/Sites/minimalist-writer`) applied to a Sermonary-style sermon editor, with the KJV bundled and a hook for local Claude.
+
+- **A library is a folder.** Each sermon is one Markdown file; each subfolder is a collection, and every sermon lives in one (no unfiled sermons; a stray file at the root still shows, under `Unfiled`, until it is filed). `Templates/` and `Illustrations/` are reserved folders. The app reads and writes those files directly and caches nothing. Settings live in `sermon.json` in the library root.
+- **Blocks.** A sermon is an ordered list of typed blocks: introduction, point, scripture, illustration, application, quote, transition, conclusion, prayer, invitation, question, note, custom, text. Points are first-class containers: a point owns every block after it up to the next point, transition, introduction, conclusion, prayer or invitation; transitions sit between groups. A point enters only through `+` and never changes kind; no block becomes a point. Those group-ending kinds are never created inside a container (the kind menu inside one omits them, except at the container's end) and only move between groups. The file stays a flat list — the hierarchy is derived by `shared/outline.js` and every surface reads it from there. Points auto-number. There are no sub-points (retired 2026-10-08; old `subpoint` fences read as points). Each block can be hidden in Podium.
+- **KJV built in.** Type a reference in a scripture block and the text fills in; change the reference and the text refills to the new passage. A Bible pane does reference lookup, keyword search, verse selection, Insert and Copy. References typed inside any prose become tappable in Podium mode.
+- **Podium mode.** Fullscreen reading view with a countdown clock, block-by-block stepping, notes on/off, an outline overview for finding your place, progress hairline.
+- **Print and export.** Manuscript, Outline, Handout on Letter (page numbers optional), Markdown and Word downloads, and a Verse list PDF for the media team (references only: every scripture block in order, then references mentioned in passing; written by `lib/pdf.js`, no library).
+- **Templates.** Files in the library's own `Templates/` folder — the only source. A library that opens without one gets the starter set written once (Three Point, Verse by Verse, Me·We·God·You·We, Defender, Children, Youth, Topical, Narrative, Bible Study, Wedding, Funeral, Baby Dedication, Graduation; `shared/templates.js`); from then on they are yours to edit, rename, delete and add to on the Templates screen, and any sermon → Save as template. The New Sermon dialog offers Blank plus whatever the folder holds.
+- **Illustrations library.** `Illustrations/*.md` with tags and source. An Illustrations pane sits beside the sermon like the Bible pane: `Insert` fills the current empty illustration block (templates leave those) or adds one after the current block; any illustration block saves back to the library; the library shows where each illustration is used (an illustration block whose heading is its title).
+- **Dictation.** The mic in the sermon tools (or ⌘⇧D) listens and types into the block at the caret, following the caret wherever it goes. The Mac app uses the Mac's own speech recognizer, on-device (Speech.framework through `desktop/bin/dictate`); the browser build uses Chrome's speech engine and other browsers get a `Dictation requires Google Chrome.` card. Words arrive sentence by sentence after a pause; the words still forming show in a bar at the bottom; `new paragraph` / `new line` break the paragraph and `period`, `comma`, `question mark` and the other spoken marks become punctuation. The usual input path (Markdown decoration, autosave, undo) handles the text.
+- **Claude hook.** `mcp/server.js` is an MCP server over the same folder: local Claude can read, create and edit sermons, look up and search the KJV, and use the illustration library. The app's watcher shows every change live.
+
+## Layout
+
+```
+index.html      The app page: import map (react, react-dom/client, htm → vendor/) + app/src/main.js; serve the repo folder and it runs
+app/            The UI: React through `htm` tagged templates (plain ES modules, no JSX, no build) + styles, fonts, theme.js
+vendor/         Browser builds of React 18, ReactDOM, scheduler and htm (fetched + rewired by scripts/vendor.js; never edit by hand)
+shared/         Pure modules used by app, MCP and tests: format.js (file format), bible.js (KJV lookup/search/refs), blocks.js, templates.js, books.js
+data/kjv/       kjv.json — 66 books, 31,102 verses (public domain; built by scripts/build-kjv.js)
+mcp/            MCP server for local Claude (see mcp/README.md)
+desktop/        Electron shell, electron-builder config, update + release wiring; dictate/ = the Speech.framework helper (Swift) built into bin/ by scripts/build-dictate.js
+tests/          node --test: format round-trip, Bible parsing/lookup/search, MCP end to end
+samples/        A small library to open on first run
+```
+
+## Run
+
+```sh
+npm install && (cd desktop && npm install)
+npm test                       # unit + MCP tests
+npm run dev                    # serves this folder on :5188 (any static server works; Chrome for the File System Access API)
+cd desktop && env -u ELECTRON_RUN_AS_NODE npm start     # the Mac app (copies the folder into desktop/app first)
+cd desktop && env -u ELECTRON_RUN_AS_NODE npm run smoke # headless load check
+cd desktop && npm run dist     # DMG + zip in desktop/dist
+```
+
+**No build step.** The browser runs the source as it is: `index.html` carries an import map that resolves `react`, `react-dom/client` and `htm` to `vendor/`, and every component is an `html\`…\`` template (`app/src/lib/html.js` = htm bound to `createElement`, `<>` → Fragment, components interpolated as `<${Foo}>…<//>`). Any static server over the repo folder is the web app — `npm run dev` is a 20-line one; GitHub Pages on the repo root would work the same. `npm run vendor` refreshes `vendor/` from esm.sh when a version in `scripts/vendor.js` changes (mirror it in the import map). Headless QA: `node scripts/serve.js` + Playwright (`channel: 'chrome'`), seed OPFS, `window.__sb.setLibrary(h)` then `window.__sb.loadLibrary(name)`.
+
+VS Code shells set `ELECTRON_RUN_AS_NODE=1`, which turns Electron into plain Node — unset it. `npm run sync` (part of start/smoke/dist) copies `index.html`, `app/`, `shared/`, `vendor/` and `data/kjv` into `desktop/app` with the production CSP (the import map is the one inline script, allowed by its sha256), and also compiles `desktop/dictate/dictate.swift` into `desktop/bin/dictate` with `xcrun swiftc` (Xcode command line tools); `DICTATE_BIN=<script> npm run smoke` drives the bridge with a fake helper. If npm reports blocked install scripts, `npm approve-scripts esbuild` (root) and `npm approve-scripts electron electron-builder` (desktop), then `node node_modules/electron/install.js` in `desktop/`.
+
+Connect Claude Code: Settings → Claude → **Copy**, or
+
+```sh
+claude mcp add sermon-builder -- node ~/Sites/sermon-builder/mcp/server.js
+```
+
+---
+
+## File format
+
+```
+---
+title: The Good Shepherd
+collection: Psalms
+date: 2026-10-11
+passage: Psalm 23
+big_idea: God's care is personal, present and permanent.
+status: ready            # draft | ready | done
+tags: [comfort, trust]
+length: 35               # target minutes for the Podium countdown (optional; without it the clock counts up)
+---
+
+::: intro
+Markdown. **bold**, *italic*, `code`, # headings, > quotes, - lists.
+:::
+
+::: point The Lord is my shepherd
+Points auto-number. Flags in braces: {hidden} (not in Podium). Unknown flags are dropped on read.
+:::
+
+::: scripture Psalm 23:1-3
+1 The LORD is my shepherd; I shall not want.
+2 He maketh me to lie down in green pastures: he leadeth me beside the still waters.
+:::
+
+::: quote C. H. Spurgeon
+The heading of a quote is its source.
+:::
+
+::: Me
+An unknown kind is a custom block labeled with that word. A custom block is `::: custom Label | Headline`: the label is its caption (what `::: Me` sets), the headline after ` | ` is optional.
+:::
+```
+
+- Heading meaning by kind — point / illustration: title · scripture: reference · quote: source · custom: headline (its caption is the separate label) · everything else: optional.
+- Scripture bodies are one numbered verse per line; the app writes KJV text so files are self-contained (paste another translation if you like; the `KJV` caption shows only while the body is non-empty).
+- A reference names each verse once: `Psalm 1:5, 6, 5` resolves to verses 5–6 and reads back as `Psalm 1:5, 6`; a part already covered by an earlier part is dropped (`Psalm 1; 1:5` is `Psalm 1`), and partial overlaps keep the wording but never repeat a verse.
+- Parsing is tolerant: text outside fences becomes `text` blocks; a missing frontmatter title falls back to the filename; a `subpoint` fence reads as a `point`. Serialization is deterministic and round-trips exactly (`shared/format.js`, tested).
+- File name = slugified title (`[\/:*?"<>|]` → `-`), de-duplicated with ` 2`, ` 3`. Title or collection changes move the file. `collection.json` inside a collection folder holds `{ "color": "#rrggbb" }` (an older `series.json` is read too). Old files with a `series:` key read it as `collection:` and are rewritten on their next save.
+- Illustrations: `Illustrations/<title>.md` with `title`, `tags`, `source` frontmatter and a Markdown body.
+- Templates: sermons in `Templates/` (`template: true`, no collection, date, status or length); the folder is seeded with the starter set when a library first opens without it and is the only source after that. `status: preached` in old files reads as `done`.
+- Word count excludes notes and hidden blocks; scripture verse numbers are not words.
+
+## Visual system
+Identical to Writer: tokens `--fg --muted --faint --line --fill --bg --fg-hover --scrim` (light `#000 #525252 #a3a3a3 #e5e7eb #f5f5f5 #fff #262626`; dark charcoal `#1f1f1f` background, never near-black), Inter for all chrome, the content font (sans · serif · mono · courier) only for titles, block text, Podium and print. Radii 6/8, no shadows, hover-revealed icon groups, 11px uppercase captions, scripture always in Georgia. Theme System · Light · Dark with a pre-paint script (`theme.js`) so dark users never see a flash.
+
+## Screens
+
+**Browser check** — the web build runs only in Google Chrome (`supported()` in `app/src/lib/dictation.js`: the Mac app's `window.dictate` bridge, else the `Google Chrome` brand via `navigator.userAgentData` with a UA fallback). Any other browser renders only the `Blocked` card — `Sermon Builder`, a `Get Google Chrome` button (google.com/chrome) and the line `Google Chrome required` — and nothing boots.
+
+**Gate** — `Sermon Builder` + `Open folder` (Electron: a native folder picker; the folder is remembered in `~/Library/Application Support/Sermon Builder/config.json` and reopens without a gate). Browser build: File System Access API with the handle in IndexedDB and a `Resume` button when Chrome needs a click.
+
+**Library** — top bar: folder name, a search icon that grows into a `Find` bar (title, passage, collection, big idea, tags; ⌘F opens it, Esc or × closes and clears it — the same bar as the sermon's find), then `+` (new collection: the Collection modal with name and color, then the folder, which shows at once with its own `+`) · layers (Templates) · bulb (Illustrations) · gear (Settings). Sermons are added from a heading's `+`: each collection, each month in Dates, a day in Calendar; with no collection yet those open the Collection modal first, and the empty library's only button is `New collection`. A view bar beneath, never in the top bar: `Collections · Dates · Calendar` on the left and a thumbnails / list toggle on the right; both choices persist in localStorage (`sermon.libview`, `sermon.liblayout`). Collections view: each collection under a heading — color tile, bold name (click → Collection modal: name, color, Delete collection), the months it spans, its own `+`, a hairline beneath; stray root files, if any, come first under `Unfiled` (no `+`). Templates never appear here. Dates view: the same headings per month (each with a `+` for a new sermon), newest first, undated last. Thumbnails are letter-proportioned sheets over two page edges, collection color as a top stripe, title in the content font, `date · passage` beneath and `Ready`/`Done` when set; hover lifts the sheet. List is a table: `Date · Title · Collection (Dates view) · Passage · Status` captions, a hairline under every row, fixed columns (the section heading drops its own hairline there). Calendar: one month of preaching dates (‹ › or ←/→ step months, `Today` returns), weekday captions, today's number in a filled circle, each dated sermon as a chip with its collection tile; chips open the sermon and drag to another day to move its date; a hover `+` on any day opens the Sermon modal with that date filled in; undated sermons stay in the Dates view. Click opens, double-click opens the Sermon modal. Empty library: a single `New sermon` button.
+
+**Sermon** — rail 280px (collapsible to 56px, persisted): `←`, hover-revealed podium / print / download (Markdown · Word · Verse list PDF) / gear (Sermon modal), the title, then the outline — one row per block with its number or kind glyph and heading or first line (no counts — the sermon total sits bottom-right of the page); a point's row is the heading (bold, full ink, number flush left, hanging 6px left of the other rows) and its rows nest 28px under it (no boxes in the rail); point rows carry a hover-revealed chevron that folds the group (session state, not persisted); hover reveals a drag grip on the left and a trash button on the right (confirms); drag to reorder with a 2px drop line showing where the row lands — a point row drags its whole group, and points, transitions and closing kinds only land between groups; click scrolls to and focuses the block. Bottom row: `Settings` · status · collapse chevron. Collapsed rail shows glyphs only.
+Main column (672px): editable title (commit on blur → renames the file), meta line (collection · date · passage · status; click → Sermon modal), editable big idea, then the block stack. Fixed top-right tools (hover-revealed): find · Bible · Illustrations · dictate (stays lit while listening) · podium · print · download (Markdown · Word · Verse list PDF) · delete sermon. Bottom-right: word count. While dictating, a bar bottom center shows a pulsing dot and the words not yet committed (`Listening` when there are none), and a solid **Stop** button (mic glyph + `Stop`, `--fg` on `--bg`, 32px, radius 6) sits bottom right where the word count was — the count slides 88px left of it — so ending a dictation never needs the hover-revealed mic (Brian).
+Each block: `KIND` caption (click → kind menu; on a custom block the caption is its editable label, placeholder `Label`, and `Kind…` lives in the `…` menu) with a hidden glyph and a hover-revealed `…` menu (Move up, Move down, Duplicate, Hide/Show in podium, Save to library, Delete); heading row by kind; a Markdown body (iA-style decoration in place, markers dimmed, so files stay raw). A `+` appears between blocks on hover (always at the end) and opens the kind menu with a filter field and an `Illustrations…` row that drops an empty illustration block there and opens the Illustrations pane.
+Every empty heading and body shows its label as placeholder text (the kind, or `Notes` under a titled block), editable areas show the text cursor, and a click on a block's padding puts the caret in its body. A block with nothing typed yet is a placeholder: it and its outline row stay faint until it is current or has content, so a sermon from a template reads as a plan rather than a finished page. Blocks are separated by a hairline with the `+` on it. A point group is drawn as a container by a faint rounded outline (1px hairline, radius 8, 16px side padding so text inside aligns with text outside) with the number inline in the caption row ahead of `POINT` (same row, vertically centered). No vertical rules anywhere (Brian). The `+` after a container sits between it and the next group, back at full width, so consecutive points read as separate containers; a block added there lands at the end of the group above (the file is flat). Deleting a point deletes its group (one confirm); duplicating copies the group; Move up / Move down and ⌥⌘↑/↓ step a point, transition or closing block over whole neighboring groups. A point's `POINT` caption is inert (no kind menu, `/` does nothing on it).
+Keys inside a block: `/` on an empty body → kind menu · ⌘Enter new block below · ⌥⌘↑/↓ move · ⌘D duplicate · ↑/↓ at the edges walk between blocks · Enter in a reference fills KJV. Global: ⌘S save · ⌘F find (CSS Custom Highlight API across all blocks, Enter/Shift-Enter step) · ⌘B Bible pane · ⌘I Illustrations pane · ⌘⇧D dictate · ⌘P print · ⌘⇧P podium · Esc closes.
+
+**Bible pane** (340px right, persisted) — one field for a reference or words. A reference shows the passage with verse numbers and ‹ › chapter chevrons; words show a hit list (all words must match, `"quoted phrase"` for exact). Click verses to select a sub-range; `Insert` adds a scripture block after the current block; `Copy` puts `text (ref, KJV)` on the clipboard. When the current block is a scripture block, the pane follows its reference.
+
+**Illustrations pane** (same 340px slot; one side pane at a time, persisted) — `Find` over title, tags, source and body; rows show title and tags; a row opens a preview with `Edit` (the Illustrations screen, whose `←` comes back to this sermon) and `Insert`; Enter in the field inserts the first match. `Insert` fills the current illustration block when it is empty, otherwise adds an illustration block after the current one, as title + body + `— source`. Below the list: `Save to library` when the current block is a filled illustration block, `Library`, and `+` in the header for a new illustration.
+
+**Podium** — fullscreen (leaving fullscreen, by Esc or otherwise, closes the Podium; Esc also closes it when fullscreen was refused); progress hairline; clock top-left counts down from the target length (click toggles elapsed/remaining, ⌥-click resets, turns solid when over); `×` top-right; the stage is wide (1320px, 6vw gutters) and one block is on it at a time, centered on the screen at full contrast with the neighbors dimmed above and below (blocks taller than the stage align to the top); wheel scrolling moves the stage and clicking a dimmed block brings it on; captions, numbers, serif scripture, quote bars; Space/→/↓ next, ←/↑ previous; `Notes` and `Outline` toggles bottom-left (also `n`/`o`); Outline replaces the stage with an overview: every block as one row (number or kind glyph, heading or first line, kind caption) indented by its depth in the point hierarchy, the current row marked, ↑/↓ move it, click or Enter brings that block onto the stage; `n / N` position bottom-right; hidden blocks omitted; references in prose underlined dotted and tap to show the KJV text in a popover.
+
+**Templates** — `←` back to the library, `Templates`, the same find bar, `+` (name dialog → a blank template opens in the editor), gear; the thumbnails / list toggle (shared with the library). Thumbnails are the library's sheets; the list is `Title · Passage · Tags`. Click opens the template in the sermon editor (no collection, date, status or length; its `←` returns here), double-click opens the Sermon modal (name, passage, tags, `Delete template`). Empty folder: a single `New template` button.
+
+**Sermon modal** — title, Collection (dropdown of the existing collections, never blank; the heading's `+` preselects its own), Date, Passage, Status (Draft · Ready · Done), Tags (chips), Length; Template dropdown when creating (the app's own `Select`: `Blank`, a hairline, then every file in `Templates/`; ↑/↓ + Enter); `Save as template` and `Delete sermon` beneath a hairline for existing sermons. Nothing is created until a name is saved.
+
+**Print** — Manuscript · Outline · Handout cards, `Page numbers` checkbox. Hidden iframe with its own CSS; Letter `@page{margin:25mm}` with `@top-center` title and `@bottom-center` page counter when on; never `@page size`. Manuscript = a label column on the left (the kind or the scripture reference) and the text on the right, air between blocks, empty blocks skipped, each point group boxed in a faint rounded outline and opened by a heading line flush left (the number in the point color, then the title, both large and bold) with the point's own body and its blocks in the two columns beneath, headings bold above their body, scripture with superscript verse numbers, quotes italic with a source line, transitions italic with no label. Outline = the same two columns as rows by the shared hierarchy: whatever precedes the first point is one group, each point group is boxed in the same faint outline and opens with the same flush-left number + title heading line as the Manuscript (each other block as a kind label beside its heading or first line), transitions are an unboxed italic line between groups, closing blocks form the last group; empty blocks and notes skipped. Labels are sentence-case words in the kind's color (gray when the kind has none); nothing in print is uppercase. Handout = numbered points, their scripture references and a Questions list with answer lines.
+
+**Settings** — Folder (`Change`), Font, Text size (px), Theme, Podium text size (px), Colors (a dot per colored kind, `Edit`), Claude (`Copy` the `claude mcp add` command), `Log out`.
+
+**Dictation** (`app/src/lib/dictation.js`) — starts from the mic in the tools strip or ⌘⇧D on the sermon screen; stops the same way, when the sermon closes, when Podium opens or on log out. Target: the contenteditable that has focus (block body, heading, title, big idea), else the current block's body at its end; the caret is followed as the user moves it, into other blocks too, and a target that leaves the DOM falls back to the current block. Final segments are inserted with `execCommand('insertText')` so the editor's own input handler runs (serialize, decorate, autosave, native undo); a space is added unless the paragraph is empty, ends in whitespace or the segment starts with punctuation, and the first letter is capitalized at a paragraph start or after `.`/`!`/`?`. `new paragraph` / `new line` anywhere in a segment → `insertParagraph`; Apple's recognizer turns the spoken command into newline characters itself, which split the same way (the helper trims spaces only, never newlines). **Spoken punctuation** (`spokenPunctuation`, run on every final segment and on the partial preview): neither Chrome's engine nor Speech.framework turns command words into marks on the desktop, so the app does — `period` / `full stop` `.` · `comma` `,` · `question mark` `?` · `exclamation point` / `exclamation mark` `!` · `colon` · `semicolon` · `ellipsis` / `dot dot dot` `…` · `open quote` / `close quote` (also `begin` / `end`, `quotes`) `"` · `open paren` / `close paren` (`parenthesis`, `bracket`) · `hyphen` `-` and `apostrophe` join the words on both sides · `dash` / `em dash` `—` · `en dash` `–`. A mark attaches to the word before it (an opening mark to the word after), the next word is capitalized after `.` `!` `?` (not after an ellipsis), and a mark the recognizer already put around the command (`store. Period.`) or that the paragraph already ends with is not doubled. Like macOS Dictation, the words always count as commands (`a period of time` has to be typed). `tests/dictation.test.js` covers the pass and the joining. Backends: `window.dictate` (the Mac app: `desktop/src/preload.js` → `desktop/src/dictate.js` spawns `bin/dictate`, which streams `ready` / `partial` / `final` / `denied` / `error` / `end` JSON lines; the helper commits a segment after 1.5 s without change or at 50 s, restarts its request, and stops on `stop` over stdin) or Chrome's `SpeechRecognition` (`continuous` + `interimResults`, restarted whenever Chrome ends the session; `not-allowed` → `Microphone blocked`, `network` → `No connection`). Outside Chrome on the web the mic opens the one-button card `Dictation requires Google Chrome.` Permission prompts come from the system (microphone + speech recognition; `extendInfo` usage strings in `electron-builder.yml`, `com.apple.security.device.audio-input` in the entitlements, both strings embedded in the helper's own `__info_plist`). TCC charges permissions to the *responsible* process: the packaged app when launched normally, but the terminal when the app is started with `npm start` — and a terminal without the speech usage string makes the request crash — so dev runs set `DICTATE_DISCLAIM=1` and the helper re-executes itself disclaiming that responsibility (`responsibility_spawnattrs_setdisclaim` + `POSIX_SPAWN_SETEXEC`, same pid), becoming its own principal; prompts then name `dictate`. **macOS Dictation must be on** (System Settings → Keyboard → Dictation): with it off the recognizer fails with `kLSRErrorDomain 201`, the helper reports `Dictation is off in System Settings` and stops, and the app opens that settings pane once. Other repeated failures before any result switch from on-device to Apple's servers (`On-device recognition unavailable`), then give up. The helper also streams the microphone level (`level`, peak RMS ×20 every 150 ms): the bar's dot swells with it and stops pulsing, so a silent input device is visible; on the web the dot goes solid on Chrome's `soundstart`. Three seconds of pure zeros from the input → `Microphone is silent` (a MacBook with its lid closed disables its built-in microphone and delivers exactly that; use an external microphone or open the lid). Six seconds of speech-level audio with no result at all → on-device is abandoned for Apple's servers, and after that `Speech recognition returned nothing` stops the session. Engine notes (`No speech heard`, `Microphone blocked`, `No connection`) show in the bar for 3 s and in the status line. The helper's stderr is relayed as `log` events (and printed in dev). The partial segment is never written into the document.
+
+**Kind colors** — one ink color per block kind, chosen in the Colors dialog from a ten-swatch row (first swatch = none, the faint token); `Reset` restores the defaults; stored in `sermon.json` as `settings.colors`. Where a kind's color shows: its `KIND` caption in the editor, its glyph or number in the rail and the Podium outline, the number on the Podium stage, and a point's gutter number. Body text and headings never take color. Print labels and numbers and the Word caption line wear the kind color (`print-color-adjust: exact`). Defaults: point blue, scripture red, illustration amber, application green, quote violet, question teal, prayer and invitation pink, custom olive; introduction, transition, conclusion, note and text none. Palette in `shared/blocks.js` (`KIND_COLORS`), chosen to read on white and on charcoal.
+
+**Illustrations** — rail list (`+` → name dialog), editable title (renames the file), Tags as chips (comma or Enter commits one, Backspace takes the last back, × removes), Source, Markdown body, then `Used in`: the sermons whose illustration blocks carry this title (click opens the sermon); trash in the tools strip. `←` returns to the sermon it was opened from, else the Library.
+
+## Persistence and watching
+Every edit marks the file dirty and writes it 0.8s later (flush on hide/pagehide/⌘S; status `Saved h:mm` / `Save failed`). Electron writes atomically (temp + rename) and watches the folder recursively; the browser adapter polls name+mtime+size every 3s while visible. A changed file is re-read unless it is dirty here or was typed in within 2s (then retried); the open sermon keeps its current block by index; files that vanish are removed (the open one returns to the Library); new folders become collection; `sermon.json` changes re-apply settings. The app's own writes are recognized by content and ignored. This is what makes the Claude hook live.
+
+## Behavior rules (do not regress)
+- The Font and Text size settings govern every body: scripture, quotes, the Bible pane, the Podium and print all use the chosen font. Nothing is pinned to a serif.
+- Backspace never deletes a block. Blocks go only through the `…` menu or the outline trash, both of which confirm.
+Bare-verb buttons, no helper text, no emoji, no browser `confirm()`; every delete goes through the Cancel/Delete card. Nothing is created without a name. Book-style folder utility: the folder is the only truth, nothing is cached, `Log out` is the only way to forget it. Content font never touches chrome. Scripture is KJV and always serif. Markdown stays raw in files.
+
+## Phones and touch
+
+Below 760px the app is one column. The rail becomes a drawer: the list button in the fixed top-left pair opens it
+over the page, its scrim or any row closes it, and the drawer's top row is where Podium, Print and Download live
+(the tool strip keeps Find, Bible, Illustrations, Dictate and Podium; Delete is in the Sermon modal). The Bible and
+Illustrations panes cover the whole screen, the find bar wraps under the tool strip on its own row, dialogs stack
+their rows, the calendar shows a sermon as its collection tile, the library list keeps Date and Title. On touch
+screens the hover-revealed controls are always visible except rail grips and row trash (reorder and delete through
+the block's … menu); tap targets grow a little. The Mac app and desktop Chrome are untouched above 760px.
+Folder access needs desktop Chrome: a phone browser has no directory picker, so the gate shows `Desktop Chrome required`.
+# sermon-builder
