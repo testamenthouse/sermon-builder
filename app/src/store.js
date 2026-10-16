@@ -16,6 +16,17 @@ const { loadBible, lookupNow, passageText } = SB.lib.bible;
 const { createDictation, createInserter, backend: dictationBackend } = SB.lib.dictation;
 
 const RESERVED = { templates: TEMPLATES_DIR, illustrations: 'Illustrations', bookmarks: BOOKMARKS_DIR };
+// Library-wide scratch notes: one Markdown file in the root, never a sermon. A sermon's own notes live in its file (`::: notepad`).
+const NOTES_FILE = 'Notes.md';
+const isNotes = p => p.toLowerCase() === NOTES_FILE.toLowerCase();
+// A sermon's own notes: `<title>.notes.md` beside it (Writer's sidecar convention), written only when non-empty, deleted when
+// emptied, renamed and moved with the sermon. Paired by name, case-insensitively; a sidecar with no sermon is ignored.
+const isSidecar = p => /\.notes\.md$/i.test(p);
+const notesPath = p => p.replace(/\.md$/i, '.notes.md');
+const sidecarOwner = (list, p) => { const key = p.toLowerCase(); return list.find(s => notesPath(s.path).toLowerCase() === key) || null; };
+const notesFromDisk = t => String(t || '').replace(/\r\n?/g, '\n').replace(/\n$/, '');
+const notesToDisk = t => t ? (t.endsWith('\n') ? t : t + '\n') : '';
+let notesDisk = null; // the file's text as last read or written; null = no file
 const EMPTY_PLAN = { services: [], guests: [], pillars: [] };
 const DEFAULTS = { font: 'sans', size: 18, theme: 'system', podium: 28, colors: DEFAULT_KIND_COLORS };
 const ls = (k, d) => { try { return localStorage.getItem(k) ?? d; } catch (e) { return d; } };
@@ -28,6 +39,7 @@ let state = {
   sermons: [], collections: [], illustrations: [], bookmarks: [], plan: EMPTY_PLAN, settings: { ...DEFAULTS, ...safeJson(ls('sermon.settings', 'null')) },
   screen: 'library', openPath: null, curBlock: null, illPath: null, bmPath: null, bmReturn: null, bibleReturn: null, biblePos: safeJson(ls('sermon.biblepos', 'null')), bibleQuery: '', focusReq: null, calScope: ['quarter', 'year'].includes(ls('sermon.calscope', 'month')) ? ls('sermon.calscope', 'month') : 'month', bibleMode: 'text',
   status: '', libView: { series: 'collections', collection: 'collections' }[ls('sermon.libview', 'collections')] || ls('sermon.libview', 'collections'), libLayout: ls('sermon.liblayout', 'cards'), libQuery: '', libFindOpen: false,
+  notes: '', notesOpen: ls('sermon.notes', 'closed') === 'open', notesTab: ls('sermon.notestab', 'sermon') === 'library' ? 'library' : 'sermon',
   railMin: ls('sermon.rail', 'max') === 'min', biblePane: ls('sermon.bible', 'closed') === 'open', illPane: ls('sermon.ill', 'closed') === 'open', illReturn: null, podium: false,
   findOpen: false, find: '', findIdx: 0, findCount: 0,
   sermonModal: null, newDialog: false, printMenu: false, settingsOpen: false, servicesOpen: false, confirm: null, kindMenu: null, fold: {}, colorsOpen: false,
@@ -96,7 +108,7 @@ function mkSermon(path, text) {
   const [dir] = splitPath(path), s = parseSermon(text);
   if (!s.meta.title) s.meta.title = splitPath(path)[1].replace(/\.md$/i, '');
   if (isTemplatesDir(dir)) s.meta.template = true;
-  return { path, dir, meta: s.meta, blocks: s.blocks, text };
+  return { path, dir, meta: s.meta, blocks: s.blocks, text, notes: '', notesText: null };
 }
 // sermon.json holds `settings` (font, theme, colors) and `plan` (services, guests, pillars); both re-apply when the file changes on disk.
 async function readSettings() {
@@ -112,25 +124,28 @@ async function loadLibrary(name) {
   // A Writer library is refused before anything is read, seeded or written, and the folder is forgotten; the gate links to Writer.
   // On the GitHub Pages host the sister app is one hop away, so go straight there; a local copy shows the gate with the link.
   if (isWriterLibrary(list)) { await fs.forget(); if (onPages()) { location.href = WRITER_URL; return; } set({ booting: false, folderOpen: false, resumable: false, gateStatus: 'This is a Writer library', gateLink: WRITER_URL }); return; }
-  const sermons = [], illustrations = [], bookmarks = [], seriesMap = new Map(); sigs = new Map();
+  const sermons = [], illustrations = [], bookmarks = [], seriesMap = new Map(), sidecars = new Map(); sigs = new Map(); let notes = ''; notesDisk = null;
   for (const e of list) {
     sigs.set(e.path, e.kind + ':' + e.mtime + ':' + e.size);
     const parts = e.path.split('/');
     if (e.kind === 'dir') { if (parts.length === 1 && !reserved(e.path)) seriesMap.set(e.path, { name: e.path, color: '', big_idea: '' }); continue; }
     if (parts.length > 2 || !isMd(e.path)) continue;
+    if (parts.length === 1 && isNotes(e.path)) { try { notesDisk = await fs.read(e.path); notes = notesFromDisk(notesDisk); } catch (err) { console.error(err); } continue; }
     const [dir] = splitPath(e.path);
     try {
       const text = await fs.read(e.path);
-      if (isIllDir(dir)) illustrations.push(parseIllustration(e.path, text)); else if (isBmDir(dir)) bookmarks.push(parseBookmark(e.path, text)); else sermons.push(mkSermon(e.path, text));
+      if (isSidecar(e.path)) sidecars.set(e.path.toLowerCase(), text);
+      else if (isIllDir(dir)) illustrations.push(parseIllustration(e.path, text)); else if (isBmDir(dir)) bookmarks.push(parseBookmark(e.path, text)); else sermons.push(mkSermon(e.path, text));
     } catch (err) { console.error(err); }
   }
+  for (const s of sermons) { const t = sidecars.get(notesPath(s.path).toLowerCase()); if (t != null) { s.notesText = t; s.notes = notesFromDisk(t); } }
   // First open of a library without a Templates/ folder: write the starter templates. After that the folder is the only source.
   if (!list.some(e => e.kind === 'dir' && isTemplatesDir(e.path))) for (const t of seedTemplates()) { try { await fs.write(t.path, t.text); sermons.push({ path: t.path, dir: TEMPLATES_DIR, meta: t.meta, blocks: t.blocks, text: t.text }); } catch (err) { console.error(err); } }
   for (const e of list) if (e.kind === 'file' && /^[^/]+\/(collection|series)\.json$/.test(e.path) && seriesMap.has(e.path.split('/')[0])) { try { Object.assign(seriesMap.get(e.path.split('/')[0]), colMeta(JSON.parse(await fs.read(e.path)))); } catch (err) {} }
   await readSettings();
   if (!lastCfg) writeSettings();
   const collections = [...seriesMap.values()].sort((a, b) => a.name.localeCompare(b.name));
-  set({ libName: name, sermons: sortSermons(sermons), collections, illustrations: illustrations.sort((a, b) => a.meta.title.localeCompare(b.meta.title)), bookmarks: sortBm(bookmarks), folderOpen: true, booting: false, resumable: false, gateStatus: '', gateLink: '', screen: 'library', openPath: null, settingsOpen: false });
+  set({ libName: name, sermons: sortSermons(sermons), collections, illustrations: illustrations.sort((a, b) => a.meta.title.localeCompare(b.meta.title)), bookmarks: sortBm(bookmarks), notes, folderOpen: true, booting: false, resumable: false, gateStatus: '', gateLink: '', screen: 'library', openPath: null, settingsOpen: false });
   startWatch();
   loadBible().catch(() => flash('Bible not loaded'));
 }
@@ -152,7 +167,8 @@ async function pickFolder() { const r = await fs.pick(); if (!r) return set({ ga
 async function resumeFolder() { const r = fs.resumeClick ? await fs.resumeClick() : await fs.resume(); if (!r || r === 'prompt' || r.error) return set({ gateStatus: (r && r.error) || 'Could not open', gateLink: '' }); await loadLibrary(r.name); }
 async function logout() {
   stopDictation(); clearTimeout(saveTimer); await flushDisk(); stopWatch(); await fs.forget(); dirty.clear(); lastCfg = null;
-  set({ folderOpen: false, libName: '', sermons: [], collections: [], illustrations: [], bookmarks: [], plan: EMPTY_PLAN, openPath: null, bmPath: null, bmReturn: null, bibleReturn: null, screen: 'library', settingsOpen: false, servicesOpen: false, printMenu: false, sermonModal: null, slotMenu: null, guestModal: null, pillarModal: null, repeatPick: null, bookmarkModal: null, podium: false, biblePane: false, illPane: false, illReturn: null, resumable: false, gateStatus: '', gateLink: '' });
+  notesDisk = null;
+  set({ folderOpen: false, libName: '', sermons: [], collections: [], illustrations: [], bookmarks: [], notes: '', plan: EMPTY_PLAN, openPath: null, bmPath: null, bmReturn: null, bibleReturn: null, screen: 'library', settingsOpen: false, servicesOpen: false, printMenu: false, sermonModal: null, slotMenu: null, guestModal: null, pillarModal: null, repeatPick: null, bookmarkModal: null, podium: false, biblePane: false, illPane: false, illReturn: null, resumable: false, gateStatus: '', gateLink: '' });
 }
 
 // ---- watcher: disk wins for anything with nothing pending here
@@ -174,19 +190,34 @@ async function reconcile() {
       if (e.path === 'sermon.json') { await readSettings(); continue; }
       if (/^[^/]+\/(collection|series)\.json$/.test(e.path)) { try { const j = colMeta(JSON.parse(await fs.read(e.path))); collections = collections.map(s => s.name === parts[0] ? { ...s, ...j } : s); changed = true; } catch (err) {} continue; }
       if (parts.length > 2 || !isMd(e.path)) continue;
+      if (parts.length === 1 && isNotes(e.path)) {
+        if (dirty.has(e.path) || Date.now() - lastInput < 2000) { retry = true; next.set(e.path, sigs.get(e.path)); continue; }
+        let t; try { t = await fs.read(e.path); } catch (err) { continue; }
+        if (t !== notesDisk) { notesDisk = t; set({ notes: notesFromDisk(t) }); }
+        continue;
+      }
+      if (isSidecar(e.path)) {
+        const s = sidecarOwner(sermons, e.path); if (!s) continue;
+        if (dirty.has(s.path) || (state.openPath === s.path && Date.now() - lastInput < 2000)) { retry = true; next.set(e.path, sigs.get(e.path)); continue; }
+        let t; try { t = await fs.read(e.path); } catch (err) { continue; }
+        if (t === s.notesText) continue;
+        sermons[sermons.indexOf(s)] = { ...s, notes: notesFromDisk(t), notesText: t }; changed = true; continue;
+      }
       if (dirty.has(e.path) || ((state.openPath === e.path || state.illPath === e.path || state.bmPath === e.path) && Date.now() - lastInput < 2000)) { retry = true; next.set(e.path, sigs.get(e.path)); continue; }
       let text; try { text = await fs.read(e.path); } catch (err) { continue; }
       const [dir] = splitPath(e.path);
       if (isIllDir(dir)) { const i = illustrations.findIndex(x => x.path === e.path); if (i >= 0 && illustrations[i].text === text) continue; const ill = parseIllustration(e.path, text); if (i >= 0) illustrations[i] = ill; else illustrations.push(ill); changed = true; }
       else if (isBmDir(dir)) { const i = bookmarks.findIndex(x => x.path === e.path); if (i >= 0 && bookmarks[i].text === text) continue; const bm = parseBookmark(e.path, text); if (i >= 0) bookmarks[i] = bm; else bookmarks.push(bm); changed = true; }
-      else { const i = sermons.findIndex(x => x.path === e.path); if (i >= 0 && sermons[i].text === text) continue; const s = mkSermon(e.path, text); if (i >= 0) sermons[i] = s; else sermons.push(s); changed = true; if (state.openPath === e.path) keepBlockByIndex(sermons[i >= 0 ? i : sermons.length - 1]); }
+      else { const i = sermons.findIndex(x => x.path === e.path); if (i >= 0 && sermons[i].text === text) continue; const s = mkSermon(e.path, text); if (i >= 0) { s.notes = sermons[i].notes; s.notesText = sermons[i].notesText; sermons[i] = s; } else sermons.push(s); changed = true; if (state.openPath === e.path) keepBlockByIndex(sermons[i >= 0 ? i : sermons.length - 1]); }
     }
     for (const p of sigs.keys()) if (!seen.has(p)) {
+      if (isSidecar(p)) { const s = sidecarOwner(sermons, p); if (s && s.notesText != null) { if (dirty.has(s.path)) { next.set(p, sigs.get(p)); retry = true; } else { sermons[sermons.indexOf(s)] = { ...s, notes: '', notesText: null }; changed = true; } } continue; }
       if (dirty.has(p)) { next.set(p, sigs.get(p)); retry = true; continue; }
       const parts = p.split('/');
       if (sermons.some(s => s.path === p)) { sermons = sermons.filter(s => s.path !== p); changed = true; if (state.openPath === p) closeSermon(); }
       if (illustrations.some(s => s.path === p)) { illustrations = illustrations.filter(s => s.path !== p); changed = true; if (state.illPath === p) set({ illPath: null }); }
       if (bookmarks.some(s => s.path === p)) { bookmarks = bookmarks.filter(s => s.path !== p); changed = true; if (state.bmPath === p) set({ bmPath: null }); }
+      if (parts.length === 1 && isNotes(p)) { notesDisk = null; if (state.notes) set({ notes: '' }); }
       if (parts.length === 1 && collections.some(s => s.name === p)) { collections = collections.filter(s => s.name !== p); changed = true; }
     }
     sigs = next;
@@ -208,8 +239,13 @@ async function flushDisk() {
   const paths = [...dirty]; dirty.clear(); writing++;
   try {
     for (const p of paths) {
+      if (isNotes(p)) { const t = notesToDisk(state.notes); if (t === (notesDisk ?? '')) continue; await fs.write(p, t); notesDisk = t; continue; }
       const s = sermonOf(p);
-      if (s) { const text = serializeSermon(s); if (text !== s.text) { await fs.write(p, text); s.text = text; } continue; }
+      if (s) {
+        const text = serializeSermon(s); if (text !== s.text) { await fs.write(p, text); s.text = text; }
+        const nt = notesToDisk(s.notes || ''); if (nt !== (s.notesText ?? '')) { if (nt) await fs.write(notesPath(p), nt); else { try { await fs.remove(notesPath(p)); } catch (e) {} } s.notesText = nt || null; }
+        continue;
+      }
       const ill = state.illustrations.find(x => x.path === p);
       if (ill) { const text = illustrationText(ill); if (text !== ill.text) { await fs.write(p, text); ill.text = text; } continue; }
       const bm = state.bookmarks.find(x => x.path === p);
@@ -230,7 +266,7 @@ window.addEventListener('beforeunload', e => { if (dirty.size) { clearTimeout(sa
 // ---- sermons
 function uniquePath(dir, title, except) {
   const base = slugify(title); let name = base, n = 2;
-  const taken = p => state.sermons.some(s => s.path === p && s.path !== except) || state.illustrations.some(s => s.path === p && s.path !== except) || state.bookmarks.some(s => s.path === p && s.path !== except);
+  const taken = p => isNotes(p) || isSidecar(p) || state.sermons.some(s => s.path === p && s.path !== except) || state.illustrations.some(s => s.path === p && s.path !== except) || state.bookmarks.some(s => s.path === p && s.path !== except);
   while (taken((dir ? dir + '/' : '') + name + '.md')) name = base + ' ' + n++;
   return (dir ? dir + '/' : '') + name + '.md';
 }
@@ -255,7 +291,7 @@ async function createSermon({ title, collection = '', date = '', service = '', p
   const dir = template ? RESERVED.templates : slugify(collection || '').replace(/^Untitled$/, '');
   const path = uniquePath(dir === 'Untitled' ? '' : dir, t);
   const meta = normalizeMeta({ title: t, collection: template ? '' : collection, date: template ? '' : date, service: template ? '' : service, passage, big_idea, status: template ? 'draft' : status, tags, length: template ? 0 : length, template });
-  const s = { path, dir, meta, blocks, text: '' };
+  const s = { path, dir, meta, blocks, text: '', notes: '', notesText: null };
   writing++;
   try { if (dir && !template && !state.collections.some(x => x.name === dir)) { await fs.mkdir(dir); } s.text = serializeSermon(s); await fs.write(path, s.text); }
   catch (e) { console.error(e); flash('Save failed'); writing--; return null; }
@@ -282,7 +318,7 @@ async function commitMeta(path, patch) {
   try {
     if (dir && !state.collections.some(x => x.name === dir)) await fs.mkdir(dir);
     await fs.write(next.path, next.text);
-    if (!sameFile) await fs.remove(path);
+    if (!sameFile) { await fs.remove(path); if (next.notesText != null) { try { await fs.rename(notesPath(path), notesPath(next.path)); } catch (e) { console.error(e); } } }
   } catch (e) { console.error(e); flash('Save failed'); writing--; return; }
   writing--;
   const collections = dir && !state.collections.some(x => x.name === dir) ? [...state.collections, { name: dir, color: '', big_idea: '' }].sort((a, b) => a.name.localeCompare(b.name)) : state.collections;
@@ -292,6 +328,7 @@ async function commitMeta(path, patch) {
 async function deleteSermon(path) {
   dirty.delete(path); writing++;
   try { await fs.remove(path); } catch (e) { console.error(e); flash('Save failed'); writing--; return; }
+  const gone = sermonOf(path); if (gone && gone.notesText != null) { try { await fs.remove(notesPath(path)); } catch (e) {} }
   writing--;
   const wasOpen = state.openPath === path;
   set({ sermons: state.sermons.filter(s => s.path !== path), confirm: null, sermonModal: null });
@@ -533,6 +570,11 @@ function useIllustration(ill) {
 // The Illustrations screen from inside a sermon remembers the way back.
 function openIllustrations(path) { clearTimeout(saveTimer); flushDisk(); set({ screen: 'illustrations', illPath: path || state.illPath, illReturn: state.openPath, drawer: false, kindMenu: null, findOpen: false, podium: false }); window.scrollTo(0, 0); }
 function leaveIllustrations() { const back = state.illReturn; set({ illReturn: null, illPath: null, drawer: false }); if (back && sermonOf(back)) openSermon(back); else set({ screen: 'library', openPath: null }); }
+// ---- notepad: the open sermon's sidecar notes and the library's Notes.md, behind the floating tab on the right
+function setSermonNotes(t) { updateOpen(s => { s.notes = t; }); }
+function setNotes(t) { touch(); set({ notes: t }); markDirty(NOTES_FILE); }
+function toggleNotes(force) { const v = force === undefined ? !state.notesOpen : !!force; lsSet('sermon.notes', v ? 'open' : 'closed'); set({ notesOpen: v }); }
+function setNotesTab(t) { lsSet('sermon.notestab', t); set({ notesTab: t }); }
 function setLibView(v) { lsSet('sermon.libview', v); set({ libView: v }); }
 function setLibLayout(v) { lsSet('sermon.liblayout', v); set({ libLayout: v }); }
 function closeLibFind() { set({ libFindOpen: false, libQuery: '' }); }
@@ -544,5 +586,5 @@ function closeMenus() { set({ printMenu: false, settingsOpen: false, servicesOpe
 const stop = e => e.stopPropagation();
 // Headless QA hook: window.__sb.setLibrary(handle) then window.__sb.loadLibrary(name).
 if (typeof window !== 'undefined') window.__sb = Object.assign(window.__sb || {}, { loadLibrary, get, set, reconcile, flushDisk, startDictation, stopDictation });
-SB.store = { DEFAULTS, get, set, useStore, applyTheme, flash, sermonOf, open, touch, illustrationText, loadLibrary, sortSermons, boot, pickFolder, resumeFolder, logout, reconcile, markDirty, flushDisk, saveNow, setSettings, setPlan, openSermon, closeSermon, updateSermon, updateOpen, createSermon, commitMeta, deleteSermon, duplicateSermon, addPreached, removePreached, movePreached, guestKey, addGuest, updateGuest, removeGuest, addPillar, updatePillar, removePillar, setCollectionMeta, createCollection, renameCollection, deleteCollection, insertBlock, removeBlock, moveBlock, moveBlockTo, duplicateBlock, setKind, toggleFold, toggleFlag, setBlock, fillScripture, setReference, insertScripture, arriveAt, createIllustration, updateIllustration, renameIllustration, deleteIllustration, createBookmark, updateBookmark, renameBookmark, deleteBookmark, useBookmark, openBookmarks, leaveBookmarks, openBible, leaveBible, setBiblePos, insertFromBible, startDictation, stopDictation, toggleDictation, toggleRail, toggleDrawer, toggleBible, setBibleMode, setCalScope, toggleIll, useIllustration, openIllustrations, leaveIllustrations, setLibView, setLibLayout, closeLibFind, newSermon, openTemplates, newTemplate, closeMenus, stop };
+SB.store = { DEFAULTS, get, set, useStore, applyTheme, flash, sermonOf, open, touch, illustrationText, loadLibrary, sortSermons, boot, pickFolder, resumeFolder, logout, reconcile, markDirty, flushDisk, saveNow, setSettings, setPlan, openSermon, closeSermon, updateSermon, updateOpen, createSermon, commitMeta, deleteSermon, duplicateSermon, addPreached, removePreached, movePreached, guestKey, addGuest, updateGuest, removeGuest, addPillar, updatePillar, removePillar, setCollectionMeta, createCollection, renameCollection, deleteCollection, insertBlock, removeBlock, moveBlock, moveBlockTo, duplicateBlock, setKind, toggleFold, toggleFlag, setBlock, fillScripture, setReference, insertScripture, arriveAt, createIllustration, updateIllustration, renameIllustration, deleteIllustration, createBookmark, updateBookmark, renameBookmark, deleteBookmark, useBookmark, openBookmarks, leaveBookmarks, openBible, leaveBible, setBiblePos, insertFromBible, startDictation, stopDictation, toggleDictation, toggleRail, toggleDrawer, toggleBible, setBibleMode, setCalScope, toggleIll, useIllustration, openIllustrations, leaveIllustrations, setSermonNotes, setNotes, toggleNotes, setNotesTab, setLibView, setLibLayout, closeLibFind, newSermon, openTemplates, newTemplate, closeMenus, stop };
 })(globalThis.SB ||= {});

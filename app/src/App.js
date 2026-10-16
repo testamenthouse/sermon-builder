@@ -12,6 +12,7 @@ const { Bookmarks } = SB.ui.Bookmarks;
 const { Bible } = SB.ui.Bible;
 const { Templates } = SB.ui.Templates;
 const { Podium } = SB.ui.Podium;
+const { Notepad } = SB.ui.Notepad;
 const { Confirm, SermonModal, CollectionModal, PrintMenu, Settings, ServicesDialog, GuestModal, PillarModal, RepeatPick, BookmarkModal, SlotMenu, NameDialog, KindColors, Alert, DictationBar, DictationStop } = SB.ui.Overlays;
 
 function App() {
@@ -39,6 +40,7 @@ function App() {
   if (!folderOpen) return html`<${Gate} />`;
   return html`<>
     ${screen === 'sermon' ? html`<${Sermon} />` : screen === 'illustrations' ? html`<${Illustrations} />` : screen === 'bookmarks' ? html`<${Bookmarks} />` : screen === 'bible' ? html`<${Bible} />` : screen === 'templates' ? html`<${Templates} />` : html`<${Library} />`}
+    ${!podium && html`<${Notepad} />`}
     ${podium && html`<${Podium} />`}
     ${!podium && (screen === 'library' || screen === 'templates') && html`<><${GitHubLink} /><${CrossLink} /></>`}
     <${SermonModal} /><${CollectionModal} /><${PrintMenu} /><${Settings} /><${ServicesDialog} /><${GuestModal} /><${PillarModal} /><${RepeatPick} /><${BookmarkModal} /><${SlotMenu} /><${KindColors} /><${NameDialog} /><${Confirm} /><${Alert} /><${DictationBar} /><${DictationStop} />

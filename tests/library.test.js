@@ -11,6 +11,8 @@ test('a sermon library is not a Writer library', () => {
 test('Writer markers are recognised anywhere they can appear', () => {
   assert.equal(isWriterLibrary([f('writer.json')]), true);
   assert.equal(isWriterLibrary([f('The Long Field', 'dir'), f('The Long Field/book.json')]), true);
-  assert.equal(isWriterLibrary([f('The Long Field', 'dir'), f('The Long Field/01-the-river.md'), f('The Long Field/01-the-river.notes.md')]), true);
+  // notes sidecars are not a marker: sermons keep `<title>.notes.md` beside them too
+  assert.equal(isWriterLibrary([f('The Long Field', 'dir'), f('The Long Field/01-the-river.md'), f('The Long Field/01-the-river.notes.md')]), false);
+  assert.equal(isWriterLibrary([f('Psalms', 'dir'), f('Psalms/The Good Shepherd.md'), f('Psalms/The Good Shepherd.notes.md')]), false);
   assert.equal(isWriterLibrary([f('Deep/Nested/book.json')]), false);
 });

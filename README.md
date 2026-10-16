@@ -62,9 +62,11 @@ The first time you open the app it asks for a folder. That folder is your librar
 ```
 My Sermons/
   sermon.json                  settings (font, colors, theme) and the plan (services, guests, pillars)
+  Notes.md                     your library-wide scratch notes
   Psalms/                      a collection
     collection.json            { "color": "#rrggbb", "big_idea": "..." }
     The Good Shepherd.md       a sermon
+    The Good Shepherd.notes.md its scratch notes
   Advent 2026/
     ...
   Templates/                   sermon templates (reserved)
@@ -77,6 +79,7 @@ My Sermons/
 
 - Every sermon lives in a collection, which is just a subfolder with an optional color.
 - A sermon is one Markdown file. Rename the sermon and the file renames. Move it to another collection and the file moves.
+- Notes live behind the pen tab on the right edge: a sermon's own notes in a `.notes.md` file beside it (written only when there is something in them, following the sermon wherever it goes) and library-wide notes in `Notes.md`. Plain Markdown with `- [ ]` checklists.
 - `Templates/`, `Illustrations/` and `Bookmarks/` are reserved. The starter templates are written once into a library that has none, and after that they are yours.
 - `Log out` in Settings is the only thing that makes the app forget the folder.
 - A [Writer](https://github.com/testamenthouse/minimalist-writer) library is refused untouched. Pick one by mistake and the app links you to Writer instead of writing anything into it.

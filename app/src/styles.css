@@ -558,3 +558,20 @@ input,textarea,select{font:inherit;color:inherit;background:none}
 .actbar{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:12;display:flex;align-items:center;gap:4px;height:40px;padding:0 6px 0 14px;border:1px solid var(--line);border-radius:8px;background:var(--bg);font-size:13px;color:var(--muted);max-width:min(90vw,640px)}
 .actbar .ref{font-weight:500;color:var(--fg);margin-right:8px;white-space:nowrap}
 @media (max-width:760px){.vrs p{padding:3px 32px 3px 6px}.actbar{left:12px;right:12px;transform:none;max-width:none}}
+
+/* Notepad: a tab on the right edge slides the panel out over whatever is on screen (sermon or library notes). */
+.np{position:fixed;top:0;right:0;bottom:0;width:min(400px,100vw);z-index:9;background:var(--bg);border-left:1px solid var(--line);display:flex;flex-direction:column;gap:10px;padding:16px 16px 20px;transform:translateX(100%);transition:transform .22s cubic-bezier(.2,.7,.2,1)}
+.np.open{transform:none}
+.np-tab{position:absolute;left:-37px;top:50%;transform:translateY(-50%);width:36px;height:44px;display:flex;align-items:center;justify-content:center;color:var(--faint);background:var(--bg);border:1px solid var(--line);border-right:0;border-radius:8px 0 0 8px}
+.np-tab:hover,.np.open .np-tab{color:var(--fg)}
+.np-tab:hover{background:var(--fill)}
+.np-h{display:flex;align-items:center;gap:4px;min-height:28px}
+.np-f{display:flex;align-items:center;gap:2px;padding-bottom:8px;border-bottom:1px solid var(--line)}
+.np-body{flex:1;overflow:auto;margin:0 -4px;padding:2px 4px}
+.np .np-ed{font-size:15px;line-height:1.7;min-height:100%}
+.np .np-ed p[data-ls="h1"]{font-size:1.3em}.np .np-ed p[data-ls="h2"]{font-size:1.15em}.np .np-ed p[data-ls="h3"]{font-size:1.05em}
+/* Checklist lines: the marker is one non-editable atom drawn as a box; its text is kept, at zero size, so the file round-trips. */
+.tk{display:inline-block;position:relative;top:-1px;width:14px;height:14px;margin:0 8px 0 0;vertical-align:middle;border:1px solid var(--muted);border-radius:3px;font-size:0;line-height:0;color:transparent;cursor:pointer;box-sizing:border-box}
+.tk.on{background:var(--fg);border-color:var(--fg)}
+.tk.on:after{content:"";position:absolute;left:4px;top:1px;width:3px;height:7px;border:solid var(--bg);border-width:0 1.5px 1.5px 0;transform:rotate(45deg)}
+.dn{text-decoration:line-through;text-decoration-color:var(--faint)}
