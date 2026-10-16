@@ -559,12 +559,30 @@ input,textarea,select{font:inherit;color:inherit;background:none}
 .actbar .ref{font-weight:500;color:var(--fg);margin-right:8px;white-space:nowrap}
 @media (max-width:760px){.vrs p{padding:3px 32px 3px 6px}.actbar{left:12px;right:12px;transform:none;max-width:none}}
 
-/* Notepad: a tab on the right edge slides the panel out over whatever is on screen (sermon or library notes). */
+/* Edge tabs (Bible, Notes) on the right of every screen; each slides its panel out over whatever is on screen. */
+.edge{position:fixed;right:0;top:50%;transform:translateY(-50%);z-index:10;display:flex;flex-direction:column;gap:6px;transition:transform .22s cubic-bezier(.2,.7,.2,1)}
+.edge.shift{transform:translate(calc(-1 * min(400px,100vw)),-50%)}
+.edge button{width:36px;height:44px;display:flex;align-items:center;justify-content:center;color:var(--faint);background:var(--bg);border:1px solid var(--line);border-right:0;border-radius:8px 0 0 8px}
+.edge button:hover{color:var(--fg);background:var(--fill)}
+.edge button.on{color:var(--fg)}
+.np.np-bible{gap:0;padding:12px 16px 0;outline:0}
+.bs{display:flex;flex-direction:column;flex:1;min-height:0}
+.bs-h{display:flex;align-items:center;gap:2px;min-height:32px}
+.bs-t{display:inline-flex;align-items:center;gap:4px;padding:4px 8px;border-radius:6px;font-size:15px;font-weight:600;color:var(--fg);white-space:nowrap}
+.bs-t svg{color:var(--faint)}
+.bs-t:hover,.bs-t.on{background:var(--fill)}
+.bs-find{margin:6px 0 0}
+.bs-body{flex:1;min-height:0;overflow:auto;margin:8px -8px 0;padding:0 8px 24px}
+.bs .vrs{font-size:calc(var(--size) * .9);line-height:1.7}
+.bs .vrs p{padding:3px 32px 3px 10px}
+.bs .vrs p .bmk{right:6px;top:7px}
+.bs .books .cap{padding:6px 10px 4px}
+.bs .books .row{padding:5px 10px}
+.bs .uses{margin-top:40px;font-size:14px}
+.bs-acts{align-items:center;padding:10px 0 14px;border-top:1px solid var(--line);margin-top:auto}
+.bs-acts .ref{font-size:13px;font-weight:500;color:var(--fg);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .np{position:fixed;top:0;right:0;bottom:0;width:min(400px,100vw);z-index:9;background:var(--bg);border-left:1px solid var(--line);display:flex;flex-direction:column;gap:10px;padding:16px 16px 20px;transform:translateX(100%);transition:transform .22s cubic-bezier(.2,.7,.2,1)}
 .np.open{transform:none}
-.np-tab{position:absolute;left:-37px;top:50%;transform:translateY(-50%);width:36px;height:44px;display:flex;align-items:center;justify-content:center;color:var(--faint);background:var(--bg);border:1px solid var(--line);border-right:0;border-radius:8px 0 0 8px}
-.np-tab:hover,.np.open .np-tab{color:var(--fg)}
-.np-tab:hover{background:var(--fill)}
 .np-h{display:flex;align-items:center;gap:4px;min-height:28px}
 .np-f{display:flex;align-items:center;gap:2px;padding-bottom:8px;border-bottom:1px solid var(--line)}
 .np-body{flex:1;overflow:auto;margin:0 -4px;padding:2px 4px}
@@ -575,3 +593,28 @@ input,textarea,select{font:inherit;color:inherit;background:none}
 .tk.on{background:var(--fg);border-color:var(--fg)}
 .tk.on:after{content:"";position:absolute;left:4px;top:1px;width:3px;height:7px;border:solid var(--bg);border-width:0 1.5px 1.5px 0;transform:rotate(45deg)}
 .dn{text-decoration:line-through;text-decoration-color:var(--faint)}
+
+/* Bible reading view: fullscreen, auto-scrolling, the verse at the middle in focus, edges fading out. */
+.reader{position:fixed;inset:0;z-index:8;background:var(--bg)} /* under the notepad tab (9) and dialogs (20) */
+.reader .prog{position:fixed;top:0;left:0;height:2px;background:var(--fg);z-index:12;transition:width .2s}
+.reader .x{position:fixed;top:16px;right:20px;z-index:12}
+.rd-ref{position:fixed;top:16px;left:20px;z-index:12;font-size:14px;color:var(--faint);padding:4px 8px}
+.rd-scroll{position:absolute;inset:0;overflow:auto;scrollbar-width:none;-webkit-mask-image:linear-gradient(transparent,#000 14%,#000 86%,transparent);mask-image:linear-gradient(transparent,#000 14%,#000 86%,transparent);cursor:default}
+.rd-scroll::-webkit-scrollbar{display:none}
+.rd-page{max-width:760px;margin:0 auto;padding:45vh 6vw 50vh;font-family:var(--content);line-height:1.75}
+.rd-page p{position:relative;margin:0 0 .4em;padding:4px 40px 4px 14px;margin-left:-14px;border-radius:8px;opacity:.3;transition:opacity .4s,background .2s;overflow-wrap:break-word;cursor:pointer}
+.rd-page p:hover{background:var(--fill)}
+.rd-page p.on,.rd-page p.sel{opacity:1}
+.rd-page p.sel{background:var(--line)}
+.rd-page p .bmk{position:absolute;right:12px;top:.55em;color:var(--faint);padding:2px;border-radius:4px;display:flex}
+.rd-page p .bmk:hover{color:var(--fg);background:var(--line)}
+.rd-page p.marked .vn{color:var(--fg)}
+.reader .actbar{z-index:13}
+.rd-page .vn{font-size:.5em;color:var(--faint);margin-right:.55em;vertical-align:top;font-family:Inter,sans-serif}
+.rd-ch{font-family:Inter,sans-serif;font-size:12px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);margin:2.4em 0 .8em;opacity:.5}
+.reader .aids{position:fixed;left:20px;bottom:16px;display:flex;align-items:center;gap:2px;z-index:12}
+.reader .aids button{display:inline-flex;align-items:center;gap:6px;padding:4px 8px;border-radius:6px;font-size:13px;color:var(--faint)}
+.reader .aids button.on{color:var(--fg)}
+.reader .aids button:hover:not(:disabled){color:var(--fg);background:var(--fill)}
+.reader .aids button:disabled{opacity:.4;cursor:default}
+.reader .aids .spd{font-size:13px;color:var(--faint);padding:0 8px;font-variant-numeric:tabular-nums}

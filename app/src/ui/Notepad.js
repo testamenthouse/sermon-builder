@@ -2,7 +2,8 @@
 'use strict';
 const { html } = SB.lib.html;
 const { useEffect, useRef } = React;
-const { useStore, setNotes, setSermonNotes, toggleNotes, setNotesTab } = SB.store;
+const { useStore, setNotes, setSermonNotes, toggleNotes, setNotesTab, toggleBibleSlide } = SB.store;
+const { BibleSlide: BibleRead } = SB.ui.Bible;
 const { doPrintNotes } = SB.lib.print;
 const { MdEditor } = SB.ui.MdEditor;
 const { I } = SB.ui.Icons;
@@ -33,22 +34,39 @@ function listify(el, kind) {
   }
 }
 
-// The notepad: a tab on the right edge of every screen that slides a panel out. Two scratch pads — the open sermon's
-// (`<title>.notes.md` beside it) and the library's (`Notes.md` in the root) — chosen by outlined chips while a sermon is open.
+// The edge tabs on the right of every screen: the Bible (a chapter to read, `BibleSlide` in ui/Bible.js) above the notepad. One panel is out at a time; the tabs ride on the open panel's edge.
+// The notepad holds two scratch pads — the open sermon's (`<title>.notes.md` beside it) and the library's (`Notes.md` in
+// the root) — chosen by outlined chips while a sermon is open.
+function EdgeTabs() {
+  const { notes, bibleOpen, screen } = useStore(s => ({ notes: s.notesOpen, bibleOpen: s.bibleSlide, screen: s.screen }));
+  return html`<div className=${'edge' + (notes || bibleOpen ? ' shift' : '')}>
+    ${screen !== 'bible' && html`<button className=${bibleOpen ? 'on' : ''} title="Bible" onClick=${() => toggleBibleSlide()}><${I} name="book" /></button>`}
+    <button className=${notes ? 'on' : ''} title="Notes" onClick=${() => toggleNotes()}><${I} name="pen" /></button>
+  </div>`;
+}
+function BibleSlide() {
+  const open = useStore(s => s.bibleSlide); const shown = useRef(false), box = useRef(null); if (open) shown.current = true;
+  useEffect(() => { if (open && box.current) box.current.focus({ preventScroll: true }); else if (!open && box.current && box.current.contains(document.activeElement)) document.activeElement.blur(); }, [open]); // focus inside, so Esc closes it; given back on close
+  return html`<div ref=${box} tabIndex=${-1} className=${'np np-bible' + (open ? ' open' : '')} onKeyDown=${e => { if (e.key === 'Escape') { e.stopPropagation(); toggleBibleSlide(false); } }}>
+    ${shown.current && html`<${BibleRead} onClose=${() => toggleBibleSlide(false)} />`}
+  </div>`;
+}
 function Notepad() {
-  const { open, tab, screen, narrow, libNotes, sermon, libName, settings } = useStore(s => ({ open: s.notesOpen, tab: s.notesTab, screen: s.screen, narrow: s.narrow, libNotes: s.notes, sermon: s.openPath ? s.sermons.find(x => x.path === s.openPath) : null, libName: s.libName, settings: s.settings }));
+  const { open, tab, screen, narrow, libNotes, sermon, libName, settings, reading } = useStore(s => ({ open: s.notesOpen, tab: s.notesTab, screen: s.screen, narrow: s.narrow, libNotes: s.notes, sermon: s.openPath ? s.sermons.find(x => x.path === s.openPath) : null, libName: s.libName, settings: s.settings, reading: s.reading }));
   const ed = useRef(null);
-  const which = screen === 'sermon' && sermon ? tab : 'library';
-  useEffect(() => { if (open && ed.current && !narrow) { ed.current.focus({ preventScroll: true }); caretTo(ed.current, 'end'); } }, [open, which]);
+  const which = sermon ? tab : 'library'; // a sermon stays open behind the Bible, Illustrations and Bookmarks screens it led to
+  useEffect(() => { if (open && ed.current && !narrow) { ed.current.focus({ preventScroll: true }); caretTo(ed.current, 'end'); } else if (!open && ed.current && ed.current.contains(document.activeElement)) document.activeElement.blur(); }, [open, which]); // a closed pad gives focus back, so the screen's own keys work again
   const act = fn => e => { e.preventDefault(); if (ed.current) fn(ed.current); };
   const value = which === 'sermon' ? (sermon.notes || '') : libNotes, onChange = which === 'sermon' ? setSermonNotes : setNotes;
   const print = () => doPrintNotes(which === 'sermon' ? sermon.meta.title : libName, value, settings, settings.pageNums);
-  return html`<div className=${'np' + (open ? ' open' : '')} onKeyDown=${e => { if (e.key === 'Escape') { e.stopPropagation(); toggleNotes(false); } }}>
-    <button className="np-tab" title="Notes" onClick=${() => toggleNotes()}><${I} name="pen" /></button>
+  return html`<>
+  <${EdgeTabs} />
+  <${BibleSlide} />
+  <div className=${'np' + (open ? ' open' : '')} onKeyDown=${e => { if (e.key === 'Escape') { e.stopPropagation(); toggleNotes(false); } }}>
     <div className="np-h">
-      ${screen === 'sermon' && sermon ? html`<div className="views np-tabs"><button className=${which === 'sermon' ? 'on' : ''} onClick=${() => setNotesTab('sermon')}>Sermon</button><button className=${which === 'library' ? 'on' : ''} onClick=${() => setNotesTab('library')}>Library</button></div>` : html`<div className="views np-tabs"><button className="on">Library</button></div>`}
+      ${sermon ? html`<div className="views np-tabs"><button className=${which === 'sermon' ? 'on' : ''} onClick=${() => setNotesTab('sermon')}>Sermon</button><button className=${which === 'library' ? 'on' : ''} onClick=${() => setNotesTab('library')}>Library</button></div>` : html`<div className="views np-tabs"><button className="on">Library</button></div>`}
       <span style=${{ flex: 1 }} />
-      ${value.trim() ? html`<button className="ib quiet" title="Print" onClick=${print}><${I} name="printer" /></button>` : null}
+      ${value.trim() && !reading ? html`<button className="ib quiet" title="Print" onClick=${print}><${I} name="printer" /></button>` : null}
       <button className="ib quiet" title="Close" onClick=${() => toggleNotes(false)}><${I} name="chevron-right" /></button>
     </div>
     <div className="np-f">
@@ -59,7 +77,8 @@ function Notepad() {
       <button className="ib quiet" title="Checklist" onMouseDown=${act(el => listify(el, 'task'))}><${I} name="checklist" /></button>
     </div>
     <div className="np-body"><${MdEditor} key=${which === 'sermon' ? sermon.path : 'library'} editorRef=${ed} className="np-ed" value=${value} placeholder="Notes" onChange=${onChange} /></div>
-  </div>`;
+  </div>
+  </>`;
 }
 (SB.ui ||= {}).Notepad = { Notepad };
 })(globalThis.SB ||= {});
