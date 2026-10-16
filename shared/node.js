@@ -10,6 +10,6 @@ import './templates.js';
 import './library.js';
 import './planning.js';
 import './bookmarks.js';
-import '../data/kjv/kjv.js';
+import '../data/kjv/kjv.js'; // the KJV only; the other translations load on demand in the page
 export const { books, bible, blocks, format, illustrations, outline, templates, library, planning, bookmarks } = globalThis.SB.shared;
-export const kjv = globalThis.SB.kjv;
+export const kjv = globalThis.SB.bibles.kjv;

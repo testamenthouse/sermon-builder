@@ -2,7 +2,8 @@
 (function (SB) {
 'use strict';
 const { mdHtml, esc } = SB.lib.md;
-const { kindLabel, kindColor } = SB.shared.blocks;
+const { kindColor } = SB.shared.blocks;
+const { t, locale, kindName, cap } = SB.lib.i18n;
 const { DAYS, fmtTime } = SB.shared.planning;
 
 const fonts = { sans: 'Inter, -apple-system, sans-serif', serif: "Georgia, 'Iowan Old Style', 'Times New Roman', serif", mono: "'SF Mono', Menlo, Consolas, monospace", courier: "'Courier Prime', 'Courier New', Courier, monospace" };
@@ -11,15 +12,15 @@ const fontFamily = f => fonts[f] || fonts.sans;
 const { pointNumbers, outlineTree } = SB.shared.outline;
 function headingOf(b) { return (b.heading || '').trim() || (b.body || '').split('\n').find(l => l.trim()) || ''; }
 function metaLine(meta) { return [meta.collection, meta.date ? fmtDate(meta.date) : '', meta.service, meta.passage].filter(Boolean).join(' · '); }
-function fmtDate(d) { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(d || ''); if (!m) return d || ''; return new Date(+m[1], +m[2] - 1, +m[3]).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }); }
+function fmtDate(d) { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(d || ''); if (!m) return d || ''; return new Date(+m[1], +m[2] - 1, +m[3]).toLocaleDateString(locale(), { month: 'short', day: 'numeric', year: 'numeric' }); }
 
 // scope: 'manuscript' | 'outline' | 'handout'
 function buildHtml(sermon, scope, colors) {
   const { meta, blocks } = sermon, nums = pointNumbers(blocks);
   const tint = b => { const c = kindColor(b.kind, colors); return c ? ' style="color:' + c + '"' : ''; }; // kind colors print on labels and numbers only
   // A point group prints as the editor draws it: number and title flush left as the heading line, the group's blocks indented beneath.
-  const group = (p, inner, cls) => '<div class="' + cls + ' pg"><div class="ph"><span class="pn"' + tint(p) + '>' + esc(nums.get(p.id) || '') + '</span>' + esc((p.heading || '').trim() || 'Point') + '</div>' + inner + '</div>';
-  const head = '<div class="head"><div class="t">' + esc(meta.title || 'Untitled') + '</div>' + (metaLine(meta) ? '<div class="ml">' + esc(metaLine(meta)) + '</div>' : '') + (meta.big_idea ? '<div class="bi">' + esc(meta.big_idea) + '</div>' : '') + '</div>';
+  const group = (p, inner, cls) => '<div class="' + cls + ' pg"><div class="ph"><span class="pn"' + tint(p) + '>' + esc(nums.get(p.id) || '') + '</span>' + esc((p.heading || '').trim() || t('Point')) + '</div>' + inner + '</div>';
+  const head = '<div class="head"><div class="t">' + esc(meta.title || t('Untitled')) + '</div>' + (metaLine(meta) ? '<div class="ml">' + esc(metaLine(meta)) + '</div>' : '') + (meta.big_idea ? '<div class="bi">' + esc(meta.big_idea) + '</div>' : '') + '</div>';
   let body = '';
   if (scope === 'manuscript') {
     // Manuscript A: a label column on the left (kind, reference, or point number) and the text on the right.
@@ -32,9 +33,9 @@ function buildHtml(sermon, scope, colors) {
       let label = '', content = '';
       if (b.kind === 'point') { if (!(b.body || '').trim()) return ''; label = ''; content = bodyHtml(b); }
       else if (b.kind === 'scripture') { label = esc(heading); content = bodyHtml(b); }
-      else if (b.kind === 'quote') { label = esc(kindLabel(b)); content = bodyHtml(b) + (heading ? '<div class="src">— ' + esc(heading) + '</div>' : ''); }
+      else if (b.kind === 'quote') { label = esc(kindName(b)); content = bodyHtml(b) + (heading ? '<div class="src">— ' + esc(heading) + '</div>' : ''); }
       else if (b.kind === 'text' || b.kind === 'transition') { label = ''; content = bodyHtml(b); }
-      else { label = esc(kindLabel(b)); content = (heading ? '<div class="lead">' + esc(heading) + '</div>' : '') + bodyHtml(b); }
+      else { label = esc(kindName(b)); content = (heading ? '<div class="lead">' + esc(heading) + '</div>' : '') + bodyHtml(b); }
       return '<div class="b ' + b.kind + '"><div class="lb"' + tint(b) + '>' + label + '</div><div class="ct">' + content + '</div></div>';
     };
     for (const sec of outlineTree(blocks)) {
@@ -48,7 +49,7 @@ function buildHtml(sermon, scope, colors) {
     // as an unboxed italic line, and the closing blocks form the last group. Empty blocks and notes are skipped.
     const line = b => { const heading = (b.heading || '').trim(); return b.kind === 'scripture' ? (heading || headingOf(b)) : b.kind === 'quote' ? headingOf({ body: b.body }) : headingOf(b); };
     const cls = b => b.kind === 'scripture' ? 'sc' : b.kind === 'quote' ? 'qt' : '';
-    const plain = b => { const l = line(b); if (b.kind === 'note' || !l.trim()) return null; return ['<span' + tint(b) + '>' + esc(kindLabel(b)) + '</span>', '<span class="' + cls(b) + '">' + esc(l.slice(0, 160)) + '</span>']; };
+    const plain = b => { const l = line(b); if (b.kind === 'note' || !l.trim()) return null; return ['<span' + tint(b) + '>' + esc(kindName(b)) + '</span>', '<span class="' + cls(b) + '">' + esc(l.slice(0, 160)) + '</span>']; };
     const groups = [];
     for (const sec of outlineTree(blocks)) {
       if (sec.type === 'transition') { const l = line(sec.block); if (l.trim()) groups.push({ tr: true, rows: [['', '<span class="tr">' + esc(l.slice(0, 160)) + '</span>']] }); continue; }
@@ -65,7 +66,7 @@ function buildHtml(sermon, scope, colors) {
       else if (b.kind === 'scripture' && b.heading) body += '<div class="hs">' + esc(b.heading) + '</div>';
       else if (b.kind === 'question') qs.push(b.body);
     }
-    if (qs.length) body += '<div class="qh">Questions</div>' + qs.map((q, i) => '<div class="hq">' + (i + 1) + '. ' + esc(q.split('\n')[0]) + '<div class="ln"></div></div>').join('');
+    if (qs.length) body += '<div class="qh">' + t('Questions') + '</div>' + qs.map((q, i) => '<div class="hq">' + (i + 1) + '. ' + esc(q.split('\n')[0]) + '<div class="ln"></div></div>').join('');
   }
   return '<div class="' + (scope === 'manuscript' ? 'ms' : scope === 'outline' ? 'ol' : 'ho') + '">' + head + body + '</div>';
 }
@@ -107,7 +108,7 @@ function buildRoadmapHtml(col, sermons) {
 const ROADMAP_CSS = '.rm{display:grid;grid-template-columns:8mm 34mm minmax(0,1fr);column-gap:5mm;padding:3mm 0;border-bottom:1px solid #d4d4d0;break-inside:avoid}.rn{color:#8a8a86;font-variant-numeric:tabular-nums;padding-top:.15em}.rd{font-size:.85em;color:#5a5a58;line-height:1.5;padding-top:.25em}.rh{font-weight:700;font-size:1.15em;line-height:1.3}.rp{color:#333;margin-top:.5mm}.rb{font-style:italic;color:#555;margin-top:.5mm}';
 function doPrintCollection(col, sermons, settings, scope, paged) {
   const list = [...sermons].sort((a, b) => (a.meta.date || '9999').localeCompare(b.meta.date || '9999') || a.meta.title.localeCompare(b.meta.title));
-  const title = col.name, docTitle = title + ' — ' + scope[0].toUpperCase() + scope.slice(1);
+  const title = col.name, docTitle = title + ' — ' + t(cap(scope));
   const html = scope === 'roadmap' ? buildRoadmapHtml(col, list) : list.map(s => '<div class="sheet">' + buildHtml(s, scope, settings.colors) + '</div>').join('');
   const css = buildCss(settings, title, !!paged) + ROADMAP_CSS + '.sheet{break-after:page}.sheet:last-child{break-after:auto}';
   printDoc(docTitle, html, css);
@@ -116,33 +117,33 @@ function doPrintCollection(col, sermons, settings, scope, paged) {
 // collection · passage (Repeat when preached again), a guest as the name over Guest; open slots stay blank for the pen.
 function buildScheduleHtml(libName, slots, from, to) {
   const cols = []; for (const sl of slots) { if (cols.some(c => c.name === sl.service.name)) break; cols.push(sl.service); }
-  const head = '<div class="head"><div class="t">Schedule</div><div class="ml">' + esc([libName, fmtDate(from) + ' – ' + fmtDate(to)].filter(Boolean).join(' · ')) + '</div></div>';
-  const th = '<tr><th></th>' + cols.map(sv => '<th>' + esc(sv.name || DAYS[sv.day]) + '<span class="m">' + esc([DAYS[sv.day].slice(0, 3), fmtTime(sv.time)].filter(Boolean).join(' · ')) + '</span></th>').join('') + '</tr>';
-  const entry = e => e.guest ? '<div class="e g"><div class="et">' + esc(e.guest.name) + '</div><div class="em">Guest</div></div>'
-    : '<div class="e' + (e.sermon.meta.status === 'idea' ? ' idea' : '') + '"><div class="et">' + esc(e.sermon.meta.title) + '</div><div class="em">' + esc([e.sermon.dir, e.sermon.meta.passage, e.repeat ? 'Repeat' : ''].filter(Boolean).join(' · ')) + '</div></div>';
+  const head = '<div class="head"><div class="t">' + t('Schedule') + '</div><div class="ml">' + esc([libName, fmtDate(from) + ' – ' + fmtDate(to)].filter(Boolean).join(' · ')) + '</div></div>';
+  const th = '<tr><th></th>' + cols.map(sv => '<th>' + esc(sv.name || t(DAYS[sv.day])) + '<span class="m">' + esc([t(DAYS[sv.day]).slice(0, 3), fmtTime(sv.time)].filter(Boolean).join(' · ')) + '</span></th>').join('') + '</tr>';
+  const entry = e => e.guest ? '<div class="e g"><div class="et">' + esc(e.guest.name) + '</div><div class="em">' + t('Guest') + '</div></div>'
+    : '<div class="e' + (e.sermon.meta.status === 'idea' ? ' idea' : '') + '"><div class="et">' + esc(e.sermon.meta.title) + '</div><div class="em">' + esc([e.sermon.dir, e.sermon.meta.passage, e.repeat ? t('Repeat') : ''].filter(Boolean).join(' · ')) + '</div></div>';
   const weeks = new Map(); for (const sl of slots) { if (!weeks.has(sl.week)) weeks.set(sl.week, []); weeks.get(sl.week).push(sl); }
   let lastMonth = '', body = '';
   for (const [w, wk] of weeks) {
     const m = w.slice(0, 7);
-    if (m !== lastMonth) { lastMonth = m; body += '<tr class="mo"><td colspan="' + (cols.length + 1) + '">' + esc(new Date(+m.slice(0, 4), +m.slice(5, 7) - 1, 1).toLocaleDateString([], { month: 'long', year: 'numeric' })) + '</td></tr>'; }
+    if (m !== lastMonth) { lastMonth = m; body += '<tr class="mo"><td colspan="' + (cols.length + 1) + '">' + esc(new Date(+m.slice(0, 4), +m.slice(5, 7) - 1, 1).toLocaleDateString(locale(), { month: 'long', year: 'numeric' })) + '</td></tr>'; }
     body += '<tr><td class="d">' + esc(fmtDate(w).replace(/,.*$/, '')) + '</td>' + wk.map(sl => '<td>' + sl.entries.map(entry).join('') + '</td>').join('') + '</tr>';
   }
   return head + '<table class="sc">' + th + body + '</table>';
 }
 const SCHEDULE_CSS = '.sc{width:100%;border-collapse:collapse;font-size:.85em}.sc th{text-align:left;font-weight:600;padding:0 2mm 2mm 0;vertical-align:bottom;border-bottom:1.5px solid #000}.sc th:first-child{width:18mm}.sc th .m{display:block;font-weight:400;font-size:.85em;color:#5a5a58}.sc td{vertical-align:top;padding:2mm 2mm 2mm 0;border-bottom:1px solid #d4d4d0}.sc td.d{color:#5a5a58;white-space:nowrap;font-variant-numeric:tabular-nums}.sc tr.mo td{padding-top:5mm;font-size:.8em;font-weight:600;color:#8a8a86;border-bottom:0}.sc .e{margin-bottom:1.5mm}.sc .et{font-weight:600}.sc .em{font-size:.85em;color:#5a5a58}.sc .e.g .et{font-weight:400;color:#333}.sc .e.idea .et{color:#8a8a86}.sc tr{break-inside:avoid}';
 function doPrintSchedule(libName, slots, from, to, settings, paged) {
-  printDoc('Schedule' + (libName ? ' — ' + libName : ''), buildScheduleHtml(libName, slots, from, to), buildCss(settings, 'Schedule', !!paged) + SCHEDULE_CSS);
+  printDoc(t('Schedule') + (libName ? ' — ' + libName : ''), buildScheduleHtml(libName, slots, from, to), buildCss(settings, t('Schedule'), !!paged) + SCHEDULE_CSS);
 }
 // Notes (a sermon's sidecar or the library's Notes.md): the pad's Markdown on Letter under a `Notes` title and a line saying whose.
 function buildNotesHtml(sub, notes) {
-  return '<div class="head"><div class="t">Notes</div>' + (sub ? '<div class="ml">' + esc(sub) + '</div>' : '') + '</div><div class="notes">' + mdHtml(notes || '') + '</div>';
+  return '<div class="head"><div class="t">' + t('Notes') + '</div>' + (sub ? '<div class="ml">' + esc(sub) + '</div>' : '') + '</div><div class="notes">' + mdHtml(notes || '') + '</div>';
 }
 const NOTES_CSS = '.notes .li{margin-bottom:.25em}';
 function doPrintNotes(sub, notes, settings, paged) {
-  printDoc('Notes' + (sub ? ' — ' + sub : ''), buildNotesHtml(sub, notes), buildCss(settings, 'Notes' + (sub ? ' — ' + sub : ''), !!paged) + NOTES_CSS);
+  printDoc(t('Notes') + (sub ? ' — ' + sub : ''), buildNotesHtml(sub, notes), buildCss(settings, t('Notes') + (sub ? ' — ' + sub : ''), !!paged) + NOTES_CSS);
 }
 function doPrint(sermon, settings, scope, paged) {
-  const title = sermon.meta.title || 'Untitled', docTitle = title + (scope === 'manuscript' ? '' : ' — ' + scope[0].toUpperCase() + scope.slice(1));
+  const title = sermon.meta.title || t('Untitled'), docTitle = title + (scope === 'manuscript' ? '' : ' — ' + t(cap(scope)));
   if (scope === 'notes') return doPrintNotes(title, sermon.notes, settings, paged);
   const html = buildHtml(sermon, scope, settings.colors);
   const css = buildCss(settings, title, !!paged);

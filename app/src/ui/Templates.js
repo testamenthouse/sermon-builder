@@ -1,6 +1,7 @@
 (function (SB) {
 'use strict';
 const { html } = SB.lib.html;
+const { t } = SB.lib.i18n;
 const { useEffect, useRef } = React;
 const { useStore, set, setLibLayout, closeLibFind, newTemplate } = SB.store;
 const { Card, openIt } = SB.ui.Library;
@@ -20,23 +21,23 @@ function Templates() {
   return html`<div className="lib">
     <div className="lib-top">
       <button className="ib" onClick=${back}><${I} name="arrow-left" /></button>
-      <h1>Templates</h1>
-      ${findOpen && html`<div className="find"><input ref=${findRef} placeholder="Find" value=${libQuery} onChange=${e => set({ libQuery: e.target.value })} onKeyDown=${e => { if (e.key === 'Escape') { e.stopPropagation(); closeLibFind(); } }} />
-        <button className="ib quiet" title="Close" onClick=${closeLibFind}><${I} name="x" size=${14} /></button></div>`}
-      <button className=${'ib' + (findOpen ? ' on' : '')} title="Find" onClick=${() => findOpen ? closeLibFind() : set({ libFindOpen: true })}><${I} name="search" /></button>
-      <button className="ib" title="New template" onClick=${newTemplate}><${I} name="plus" /></button>
-      <button className="ib" title="Settings" onClick=${() => set({ settingsOpen: true })}><${I} name="settings" /></button>
+      <h1>${t('Templates')}</h1>
+      ${findOpen && html`<div className="find"><input ref=${findRef} placeholder=${t('Find')} value=${libQuery} onChange=${e => set({ libQuery: e.target.value })} onKeyDown=${e => { if (e.key === 'Escape') { e.stopPropagation(); closeLibFind(); } }} />
+        <button className="ib quiet" title=${t('Close')} onClick=${closeLibFind}><${I} name="x" size=${14} /></button></div>`}
+      <button className=${'ib' + (findOpen ? ' on' : '')} title=${t('Find')} onClick=${() => findOpen ? closeLibFind() : set({ libFindOpen: true })}><${I} name="search" /></button>
+      <button className="ib" title=${t('New template')} onClick=${newTemplate}><${I} name="plus" /></button>
+      <button className="ib" title=${t('Settings')} onClick=${() => set({ settingsOpen: true })}><${I} name="settings" /></button>
     </div>
     <div className="lib-bar">
       <span className="sp" />
       <div className="seg">
-        <button className=${!listMode ? 'on' : ''} title="Thumbnails" onClick=${() => setLibLayout('cards')}><${I} name="grid" size=${14} /></button>
-        <button className=${listMode ? 'on' : ''} title="List" onClick=${() => setLibLayout('list')}><${I} name="list" size=${14} /></button>
+        <button className=${!listMode ? 'on' : ''} title=${t('Thumbnails')} onClick=${() => setLibLayout('cards')}><${I} name="grid" size=${14} /></button>
+        <button className=${listMode ? 'on' : ''} title=${t('List')} onClick=${() => setLibLayout('list')}><${I} name="list" size=${14} /></button>
       </div>
     </div>
-    ${!all.length ? html`<div className="none"><button className="pb" onClick=${newTemplate}>New template</button></div>`
+    ${!all.length ? html`<div className="none"><button className="pb" onClick=${newTemplate}>${t('New template')}</button></div>`
       : listMode ? html`<div className="sec list"><div className="tbl">
-        <div className="tr th"><span className="td t">Title</span><span className="td p">Passage</span><span className="td tg">Tags</span></div>
+        <div className="tr th"><span className="td t">${t('Title')}</span><span className="td p">${t('Passage')}</span><span className="td tg">${t('Tags')}</span></div>
         ${list.map(s => html`<div key=${s.path} className="tr" ...${openIt(s)}><span className="td t">${s.meta.title}</span><span className="td p">${s.meta.passage}</span><span className="td tg">${s.meta.tags.join(' · ')}</span></div>`)}
       </div></div>`
       : html`<div className="sec"><div className="grid">${list.map(s => html`<${Card} key=${s.path} s=${s} color="" />`)}</div></div>`}

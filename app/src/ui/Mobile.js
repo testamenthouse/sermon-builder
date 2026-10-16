@@ -1,6 +1,7 @@
 (function (SB) {
 'use strict';
 const { html } = SB.lib.html;
+const { t } = SB.lib.i18n;
 const { toggleDrawer } = SB.store;
 const { I } = SB.ui.Icons;
 
@@ -9,7 +10,7 @@ const { I } = SB.ui.Icons;
 function MobileTop({ onBack }) {
   return html`<div className="mtop">
     <button className="ib" onClick=${onBack}><${I} name="arrow-left" /></button>
-    <button className="ib" title="Outline" onClick=${() => toggleDrawer(true)}><${I} name="list" /></button>
+    <button className="ib" title=${t('Outline')} onClick=${() => toggleDrawer(true)}><${I} name="list" /></button>
   </div>`;
 }
 function DrawerScrim() { return html`<div className="drawer-scrim" onClick=${() => toggleDrawer(false)} />`; }

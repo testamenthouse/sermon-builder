@@ -16,7 +16,7 @@ const { Notepad } = SB.ui.Notepad;
 const { Confirm, SermonModal, CollectionModal, PrintMenu, Settings, ServicesDialog, GuestModal, PillarModal, RepeatPick, BookmarkModal, SlotMenu, NameDialog, KindColors, Alert, DictationBar, DictationStop } = SB.ui.Overlays;
 
 function App() {
-  const { booting, folderOpen, screen, podium } = useStore(s => ({ booting: s.booting, folderOpen: s.folderOpen, screen: s.screen, podium: s.podium }));
+  const { booting, folderOpen, screen, podium, lang } = useStore(s => ({ booting: s.booting, folderOpen: s.folderOpen, screen: s.screen, podium: s.podium, lang: s.settings.language }));
   useEffect(() => { if (supported()) boot(); }, []);
   useEffect(() => { if (podium || screen !== 'sermon') stopDictation(); }, [podium, screen]);
   useEffect(() => {
@@ -38,13 +38,14 @@ function App() {
   if (!supported()) return html`<${Blocked} />`;
   if (booting) return null;
   if (!folderOpen) return html`<${Gate} />`;
-  return html`<>
+  // keyed on the language: a switch remounts every component, so each one reads its strings again
+  return html`<${React.Fragment} key=${lang}>
     ${screen === 'sermon' ? html`<${Sermon} />` : screen === 'illustrations' ? html`<${Illustrations} />` : screen === 'bookmarks' ? html`<${Bookmarks} />` : screen === 'bible' ? html`<${Bible} />` : screen === 'templates' ? html`<${Templates} />` : html`<${Library} />`}
     ${!podium && html`<${Notepad} />`}
     ${podium && html`<${Podium} />`}
     ${!podium && (screen === 'library' || screen === 'templates') && html`<><${GitHubLink} /><${CrossLink} /></>`}
     <${SermonModal} /><${CollectionModal} /><${PrintMenu} /><${Settings} /><${ServicesDialog} /><${GuestModal} /><${PillarModal} /><${RepeatPick} /><${BookmarkModal} /><${SlotMenu} /><${KindColors} /><${NameDialog} /><${Confirm} /><${Alert} /><${DictationBar} /><${DictationStop} />
-  </>`;
+  <//>`;
 }
 SB.app = { App };
 })(globalThis.SB ||= {});

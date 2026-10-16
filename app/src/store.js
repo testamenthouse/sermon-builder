@@ -12,7 +12,8 @@ const { normPlan, preachedEntry, slotService } = SB.shared.planning;
 const { parseBookmark, bookmarkText, bookmarkFile, BOOKMARKS_DIR } = SB.shared.bookmarks;
 const { KIND, DEFAULT_KIND_COLORS } = SB.shared.blocks;
 const { groupRange, moveRange, moveStep, canInsert, canSwitch } = SB.shared.outline;
-const { loadBible, lookupNow, passageText } = SB.lib.bible;
+const { loadBible, setTranslation, translationOf, parseRef, lookupNow, passageText } = SB.lib.bible;
+const { t, setLang, locale } = SB.lib.i18n;
 const { createDictation, createInserter, backend: dictationBackend } = SB.lib.dictation;
 
 const RESERVED = { templates: TEMPLATES_DIR, illustrations: 'Illustrations', bookmarks: BOOKMARKS_DIR };
@@ -28,7 +29,7 @@ const notesFromDisk = t => String(t || '').replace(/\r\n?/g, '\n').replace(/\n$/
 const notesToDisk = t => t ? (t.endsWith('\n') ? t : t + '\n') : '';
 let notesDisk = null; // the file's text as last read or written; null = no file
 const EMPTY_PLAN = { services: [], guests: [], pillars: [] };
-const DEFAULTS = { font: 'sans', size: 18, theme: 'system', podium: 28, colors: DEFAULT_KIND_COLORS };
+const DEFAULTS = { font: 'sans', size: 18, theme: 'system', podium: 28, colors: DEFAULT_KIND_COLORS, translation: 'kjv', language: 'en' };
 const ls = (k, d) => { try { return localStorage.getItem(k) ?? d; } catch (e) { return d; } };
 const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
 
@@ -37,7 +38,7 @@ const NARROW = window.matchMedia('(max-width: 760px)');
 let state = {
   booting: true, folderOpen: false, resumable: false, gateStatus: '', gateLink: '', libName: '',
   sermons: [], collections: [], illustrations: [], bookmarks: [], plan: EMPTY_PLAN, settings: { ...DEFAULTS, ...safeJson(ls('sermon.settings', 'null')) },
-  screen: 'library', openPath: null, curBlock: null, illPath: null, bmPath: null, bmReturn: null, bibleReturn: null, biblePos: safeJson(ls('sermon.biblepos', 'null')), bibleQuery: '', focusReq: null, calScope: ['quarter', 'year'].includes(ls('sermon.calscope', 'month')) ? ls('sermon.calscope', 'month') : 'month', bibleMode: 'text',
+  screen: 'library', openPath: null, curBlock: null, illPath: null, bmPath: null, bmReturn: null, bibleReturn: null, biblePos: safeJson(ls('sermon.biblepos', 'null')), bibleQuery: '', bibleReady: 'kjv', focusReq: null, calScope: ['quarter', 'year'].includes(ls('sermon.calscope', 'month')) ? ls('sermon.calscope', 'month') : 'month', bibleMode: 'text',
   status: '', libView: { series: 'collections', collection: 'collections' }[ls('sermon.libview', 'collections')] || ls('sermon.libview', 'collections'), libLayout: ls('sermon.liblayout', 'cards'), libQuery: '', libFindOpen: false,
   notes: '', reading: false, notesOpen: false, bibleSlide: false, bibleFrom: null, notesTab: ls('sermon.notestab', 'sermon') === 'library' ? 'library' : 'sermon', // the edge panels start closed on every load; the notes chip is remembered
   railMin: ls('sermon.rail', 'max') === 'min', biblePane: ls('sermon.bible', 'closed') === 'open', illPane: ls('sermon.ill', 'closed') === 'open', illReturn: null, podium: false,
@@ -70,7 +71,22 @@ function applyTheme() {
   el.style.setProperty('--content', FONTS[state.settings.font] || FONTS.sans);
   el.style.setProperty('--size', state.settings.size + 'px');
   el.style.setProperty('--podium', state.settings.podium + 'px');
+  setLang(state.settings.language);
+  applyTranslation();
 }
+setLang(state.settings.language);
+// The chosen translation's text is added to the page when it is first chosen; until it arrives lookups fall back to the KJV,
+// and `bibleReady` changes once it is in so every open Bible surface repaints. A file that will not load keeps the last one.
+let wantTx = '';
+function applyTranslation() {
+  const id = translationOf(state.settings.translation).id; if (id === wantTx) return Promise.resolve();
+  wantTx = id;
+  return setTranslation(id).then(() => { if (wantTx === id) set({ bibleReady: id }); }).catch(() => { if (wantTx === id) wantTx = ''; flash(t('{abbr} not loaded', { abbr: translationOf(id).abbr })); });
+}
+// The Bible screen's place is in the URL hash (`#John 3:16`), so a link or a reload lands on the verse.
+const hashRef = () => { try { const h = decodeURIComponent(location.hash.slice(1)); return h && parseRef(h) ? h : ''; } catch (e) { return ''; } };
+function setHash(ref) { const want = ref ? '#' + encodeURIComponent(ref) : ''; if (location.hash === want || (!want && !location.hash)) return; history.replaceState(null, '', want || location.pathname + location.search); }
+window.addEventListener('hashchange', () => { const r = hashRef(); if (!r || !state.folderOpen) return; if (state.screen === 'bible') set({ bibleQuery: r }); else openBible(r); });
 mq.addEventListener('change', applyTheme);
 NARROW.addEventListener('change', e => set({ narrow: e.matches, drawer: false }));
 
@@ -123,7 +139,7 @@ async function loadLibrary(name) {
   const list = await fs.list();
   // A Writer library is refused before anything is read, seeded or written, and the folder is forgotten; the gate links to Writer.
   // On the GitHub Pages host the sister app is one hop away, so go straight there; a local copy shows the gate with the link.
-  if (isWriterLibrary(list)) { await fs.forget(); if (onPages()) { location.href = WRITER_URL; return; } set({ booting: false, folderOpen: false, resumable: false, gateStatus: 'This is a Writer library', gateLink: WRITER_URL }); return; }
+  if (isWriterLibrary(list)) { await fs.forget(); if (onPages()) { location.href = WRITER_URL; return; } set({ booting: false, folderOpen: false, resumable: false, gateStatus: t('This is a Writer library'), gateLink: WRITER_URL }); return; }
   const sermons = [], illustrations = [], bookmarks = [], seriesMap = new Map(), sidecars = new Map(); sigs = new Map(); let notes = ''; notesDisk = null;
   for (const e of list) {
     sigs.set(e.path, e.kind + ':' + e.mtime + ':' + e.size);
@@ -147,14 +163,15 @@ async function loadLibrary(name) {
   const collections = [...seriesMap.values()].sort((a, b) => a.name.localeCompare(b.name));
   set({ libName: name, sermons: sortSermons(sermons), collections, illustrations: illustrations.sort((a, b) => a.meta.title.localeCompare(b.meta.title)), bookmarks: sortBm(bookmarks), notes, folderOpen: true, booting: false, resumable: false, gateStatus: '', gateLink: '', screen: 'library', openPath: null, settingsOpen: false });
   startWatch();
-  loadBible().catch(() => flash('Bible not loaded'));
+  await applyTranslation();
+  if (hashRef()) openBible(hashRef());
 }
 const colMeta = j => ({ color: /^#[0-9a-f]{6}$/i.test((j && j.color) || '') ? j.color : '', big_idea: String((j && j.big_idea) || '').trim() });
 const sortSermons = list => [...list].sort((a, b) => (b.meta.date || '').localeCompare(a.meta.date || '') || a.meta.title.localeCompare(b.meta.title));
 
 async function boot() {
   applyTheme();
-  if (!fs.supported) return set({ booting: false, gateStatus: 'Desktop Google Chrome required' });
+  if (!fs.supported) return set({ booting: false, gateStatus: t('Desktop Google Chrome required') });
   try {
     const r = await fs.resume();
     if (r === 'prompt') return set({ booting: false, resumable: true });
@@ -163,9 +180,10 @@ async function boot() {
   } catch (e) { console.error(e); }
   set({ booting: false });
 }
-async function pickFolder() { const r = await fs.pick(); if (!r) return set({ gateStatus: 'Could not open', gateLink: '' }); if (r.error) return set({ gateStatus: r.error, gateLink: '' }); await loadLibrary(r.name); }
-async function resumeFolder() { const r = fs.resumeClick ? await fs.resumeClick() : await fs.resume(); if (!r || r === 'prompt' || r.error) return set({ gateStatus: (r && r.error) || 'Could not open', gateLink: '' }); await loadLibrary(r.name); }
+async function pickFolder() { const r = await fs.pick(); if (!r) return set({ gateStatus: t('Could not open'), gateLink: '' }); if (r.error) return set({ gateStatus: r.error, gateLink: '' }); await loadLibrary(r.name); }
+async function resumeFolder() { const r = fs.resumeClick ? await fs.resumeClick() : await fs.resume(); if (!r || r === 'prompt' || r.error) return set({ gateStatus: (r && r.error) || t('Could not open'), gateLink: '' }); await loadLibrary(r.name); }
 async function logout() {
+  setHash('');
   stopDictation(); clearTimeout(saveTimer); await flushDisk(); stopWatch(); await fs.forget(); dirty.clear(); lastCfg = null;
   notesDisk = null;
   set({ folderOpen: false, libName: '', sermons: [], collections: [], illustrations: [], bookmarks: [], notes: '', plan: EMPTY_PLAN, openPath: null, bmPath: null, bmReturn: null, bibleReturn: null, screen: 'library', settingsOpen: false, servicesOpen: false, printMenu: false, sermonModal: null, slotMenu: null, guestModal: null, pillarModal: null, repeatPick: null, bookmarkModal: null, podium: false, biblePane: false, illPane: false, illReturn: null, resumable: false, gateStatus: '', gateLink: '' });
@@ -251,8 +269,8 @@ async function flushDisk() {
       const bm = state.bookmarks.find(x => x.path === p);
       if (bm) { const text = bookmarkText(bm); if (text !== bm.text) { await fs.write(p, text); bm.text = text; } }
     }
-    flash('Saved ' + new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }));
-  } catch (e) { console.error(e); for (const p of paths) dirty.add(p); flash('Save failed'); }
+    flash(t('Saved {time}', { time: new Date().toLocaleTimeString(locale(), { hour: 'numeric', minute: '2-digit' }) }));
+  } catch (e) { console.error(e); for (const p of paths) dirty.add(p); flash(t('Save failed')); }
   finally { writing--; }
 }
 function saveNow() { if (state.openPath) dirty.add(state.openPath); if (state.illPath) dirty.add(state.illPath); if (state.bmPath) dirty.add(state.bmPath); clearTimeout(saveTimer); flushDisk(); }
@@ -284,17 +302,17 @@ const updateOpen = fn => { if (state.openPath) { touch(); updateSermon(state.ope
 
 // templatePath = the Templates/ file to copy blocks from ('' = blank); template = make a template rather than a sermon.
 async function createSermon({ title, collection = '', date = '', service = '', passage = '', big_idea = '', status = 'draft', tags = [], length = 0, templatePath = '', template = false, blocks: given = null }) {
-  const t = String(title || '').trim(); if (!t || (!template && !String(collection || '').trim())) return null; // every sermon lives in a collection
+  const ttl = String(title || '').trim(); if (!ttl || (!template && !String(collection || '').trim())) return null; // every sermon lives in a collection
   let blocks = [];
   if (given) blocks = given.map(b => ({ ...b, id: newId(), flags: [...(b.flags || [])] }));
   else if (templatePath) { const src = sermonOf(templatePath); if (src) blocks = src.blocks.map(b => ({ ...b, id: newId(), flags: [...(b.flags || [])] })); }
   const dir = template ? RESERVED.templates : slugify(collection || '').replace(/^Untitled$/, '');
-  const path = uniquePath(dir === 'Untitled' ? '' : dir, t);
-  const meta = normalizeMeta({ title: t, collection: template ? '' : collection, date: template ? '' : date, service: template ? '' : service, passage, big_idea, status: template ? 'draft' : status, tags, length: template ? 0 : length, template });
+  const path = uniquePath(dir === 'Untitled' ? '' : dir, ttl);
+  const meta = normalizeMeta({ title: ttl, collection: template ? '' : collection, date: template ? '' : date, service: template ? '' : service, passage, big_idea, status: template ? 'draft' : status, tags, length: template ? 0 : length, template });
   const s = { path, dir, meta, blocks, text: '', notes: '', notesText: null };
   writing++;
   try { if (dir && !template && !state.collections.some(x => x.name === dir)) { await fs.mkdir(dir); } s.text = serializeSermon(s); await fs.write(path, s.text); }
-  catch (e) { console.error(e); flash('Save failed'); writing--; return null; }
+  catch (e) { console.error(e); flash(t('Save failed')); writing--; return null; }
   writing--;
   const collections2 = dir && !template && !state.collections.some(x => x.name === dir) ? [...state.collections, { name: dir, color: '', big_idea: '' }].sort((a, b) => a.name.localeCompare(b.name)) : state.collections;
   set({ sermons: sortSermons([...state.sermons, s]), collections: collections2 });
@@ -319,7 +337,7 @@ async function commitMeta(path, patch) {
     if (dir && !state.collections.some(x => x.name === dir)) await fs.mkdir(dir);
     await fs.write(next.path, next.text);
     if (!sameFile) { await fs.remove(path); if (next.notesText != null) { try { await fs.rename(notesPath(path), notesPath(next.path)); } catch (e) { console.error(e); } } }
-  } catch (e) { console.error(e); flash('Save failed'); writing--; return; }
+  } catch (e) { console.error(e); flash(t('Save failed')); writing--; return; }
   writing--;
   const collections = dir && !state.collections.some(x => x.name === dir) ? [...state.collections, { name: dir, color: '', big_idea: '' }].sort((a, b) => a.name.localeCompare(b.name)) : state.collections;
   set({ sermons: sortSermons(state.sermons.map(x => x.path === path ? next : x)), collections, openPath: state.openPath === path ? next.path : state.openPath });
@@ -327,7 +345,7 @@ async function commitMeta(path, patch) {
 }
 async function deleteSermon(path) {
   dirty.delete(path); writing++;
-  try { await fs.remove(path); } catch (e) { console.error(e); flash('Save failed'); writing--; return; }
+  try { await fs.remove(path); } catch (e) { console.error(e); flash(t('Save failed')); writing--; return; }
   const gone = sermonOf(path); if (gone && gone.notesText != null) { try { await fs.remove(notesPath(path)); } catch (e) {} }
   writing--;
   const wasOpen = state.openPath === path;
@@ -344,25 +362,25 @@ async function setCollectionMeta(name, patch) {
 }
 // A collection is a folder (every sermon lives in one): make it empty, it shows at once with its own + for the first sermon.
 async function createCollection(name, color = '', big_idea = '') {
-  const t = slugify(name); if (!t || t === 'Untitled' || state.collections.some(s => s.name === t) || reserved(t)) return false;
+  const slug = slugify(name); if (!slug || slug === 'Untitled' || state.collections.some(s => s.name === slug) || reserved(slug)) return false;
   const j = {}; if (color) j.color = color; if (big_idea) j.big_idea = big_idea;
-  writing++; try { await fs.mkdir(t); if (Object.keys(j).length) await fs.write(t + '/collection.json', JSON.stringify(j, null, 2) + '\n'); } catch (e) { writing--; flash('Save failed'); return false; } writing--;
-  set({ collections: [...state.collections, { name: t, color, big_idea }].sort((a, b) => a.name.localeCompare(b.name)) });
+  writing++; try { await fs.mkdir(slug); if (Object.keys(j).length) await fs.write(slug + '/collection.json', JSON.stringify(j, null, 2) + '\n'); } catch (e) { writing--; flash(t('Save failed')); return false; } writing--;
+  set({ collections: [...state.collections, { name: slug, color, big_idea }].sort((a, b) => a.name.localeCompare(b.name)) });
   reconcileSoon(); return true;
 }
 async function renameCollection(from, to) {
-  const t = slugify(to); if (!t || t === from || t === 'Untitled' || state.collections.some(s => s.name === t) || reserved(t)) return false;
+  const slug = slugify(to); if (!slug || slug === from || slug === 'Untitled' || state.collections.some(s => s.name === slug) || reserved(slug)) return false;
   clearTimeout(saveTimer); await flushDisk(); writing++;
-  try { await fs.rename(from, t); } catch (e) { writing--; flash('Save failed'); return false; }
+  try { await fs.rename(from, slug); } catch (e) { writing--; flash(t('Save failed')); return false; }
   writing--;
-  const sermons = state.sermons.map(s => s.dir === from ? { ...s, dir: t, path: t + s.path.slice(from.length), meta: { ...s.meta, collection: t } } : s);
-  for (const s of sermons) if (s.dir === t && s.meta.collection === t) { s.text = ''; dirty.add(s.path); }
-  set({ sermons, collections: state.collections.map(s => s.name === from ? { ...s, name: t } : s).sort((a, b) => a.name.localeCompare(b.name)), openPath: state.openPath && state.openPath.startsWith(from + '/') ? t + state.openPath.slice(from.length) : state.openPath });
+  const sermons = state.sermons.map(s => s.dir === from ? { ...s, dir: slug, path: slug + s.path.slice(from.length), meta: { ...s.meta, collection: slug } } : s);
+  for (const s of sermons) if (s.dir === slug && s.meta.collection === slug) { s.text = ''; dirty.add(s.path); }
+  set({ sermons, collections: state.collections.map(s => s.name === from ? { ...s, name: slug } : s).sort((a, b) => a.name.localeCompare(b.name)), openPath: state.openPath && state.openPath.startsWith(from + '/') ? slug + state.openPath.slice(from.length) : state.openPath });
   clearTimeout(saveTimer); await flushDisk(); await reconcileSoon(); return true;
 }
 async function deleteCollection(name) {
   clearTimeout(saveTimer); await flushDisk(); writing++;
-  try { await fs.remove(name); } catch (e) { writing--; flash('Save failed'); return; }
+  try { await fs.remove(name); } catch (e) { writing--; flash(t('Save failed')); return; }
   writing--;
   const wasOpen = state.openPath && state.openPath.startsWith(name + '/');
   set({ sermons: state.sermons.filter(s => s.dir !== name), collections: state.collections.filter(s => s.name !== name), confirm: null });
@@ -460,10 +478,10 @@ function arriveAt(id) {
 
 // ---- illustrations library
 async function createIllustration({ title, tags = [], source = '', body = '' }) {
-  const t = String(title || '').trim(); if (!t) return null;
-  const path = uniquePath(RESERVED.illustrations, t);
-  const ill = { path, meta: { title: t, tags, source }, body, text: '' }; ill.text = illustrationText(ill);
-  writing++; try { await fs.write(path, ill.text); } catch (e) { writing--; flash('Save failed'); return null; } writing--;
+  const ttl = String(title || '').trim(); if (!ttl) return null;
+  const path = uniquePath(RESERVED.illustrations, ttl);
+  const ill = { path, meta: { title: ttl, tags, source }, body, text: '' }; ill.text = illustrationText(ill);
+  writing++; try { await fs.write(path, ill.text); } catch (e) { writing--; flash(t('Save failed')); return null; } writing--;
   set({ illustrations: [...state.illustrations, ill].sort((a, b) => a.meta.title.localeCompare(b.meta.title)) });
   reconcileSoon(); return path;
 }
@@ -473,15 +491,15 @@ function updateIllustration(path, fn) {
   const illustrations = state.illustrations.slice(); illustrations[i] = ill; touch(); set({ illustrations }); markDirty(path);
 }
 async function renameIllustration(path, title) {
-  const ill = state.illustrations.find(x => x.path === path); const t = String(title || '').trim(); if (!ill || !t || t === ill.meta.title) return;
+  const ill = state.illustrations.find(x => x.path === path); const ttl = String(title || '').trim(); if (!ill || !ttl || ttl === ill.meta.title) return;
   clearTimeout(saveTimer); await flushDisk();
-  const target = uniquePath(RESERVED.illustrations, t, path); const next = { ...ill, path: target, meta: { ...ill.meta, title: t } }; next.text = illustrationText(next);
-  writing++; try { await fs.write(target, next.text); if (target !== path) await fs.remove(path); } catch (e) { writing--; flash('Save failed'); return; } writing--;
+  const target = uniquePath(RESERVED.illustrations, ttl, path); const next = { ...ill, path: target, meta: { ...ill.meta, title: ttl } }; next.text = illustrationText(next);
+  writing++; try { await fs.write(target, next.text); if (target !== path) await fs.remove(path); } catch (e) { writing--; flash(t('Save failed')); return; } writing--;
   set({ illustrations: state.illustrations.map(x => x.path === path ? next : x).sort((a, b) => a.meta.title.localeCompare(b.meta.title)), illPath: state.illPath === path ? target : state.illPath });
   reconcileSoon();
 }
 async function deleteIllustration(path) {
-  dirty.delete(path); writing++; try { await fs.remove(path); } catch (e) { writing--; flash('Save failed'); return; } writing--;
+  dirty.delete(path); writing++; try { await fs.remove(path); } catch (e) { writing--; flash(t('Save failed')); return; } writing--;
   set({ illustrations: state.illustrations.filter(x => x.path !== path), illPath: state.illPath === path ? null : state.illPath, confirm: null });
   reconcileSoon();
 }
@@ -491,7 +509,7 @@ async function createBookmark({ reference, tags = [], body = '' }) {
   const r = lookupNow(reference); if (!r) return null;
   const path = uniquePath(RESERVED.bookmarks, bookmarkFile(r.ref));
   const bm = { path, meta: { reference: r.ref, tags }, body, text: '' }; bm.text = bookmarkText(bm);
-  writing++; try { await fs.write(path, bm.text); } catch (e) { writing--; flash('Save failed'); return null; } writing--;
+  writing++; try { await fs.write(path, bm.text); } catch (e) { writing--; flash(t('Save failed')); return null; } writing--;
   set({ bookmarks: sortBm([...state.bookmarks, bm]) });
   reconcileSoon(); return path;
 }
@@ -504,25 +522,25 @@ async function renameBookmark(path, reference) {
   const bm = state.bookmarks.find(x => x.path === path), r = lookupNow(reference); if (!bm || !r || r.ref === bm.meta.reference) return !!r;
   clearTimeout(saveTimer); await flushDisk();
   const target = uniquePath(RESERVED.bookmarks, bookmarkFile(r.ref), path); const next = { ...bm, path: target, meta: { ...bm.meta, reference: r.ref } }; next.text = bookmarkText(next);
-  writing++; try { await fs.write(target, next.text); if (target !== path) await fs.remove(path); } catch (e) { writing--; flash('Save failed'); return false; } writing--;
+  writing++; try { await fs.write(target, next.text); if (target !== path) await fs.remove(path); } catch (e) { writing--; flash(t('Save failed')); return false; } writing--;
   set({ bookmarks: sortBm(state.bookmarks.map(x => x.path === path ? next : x)), bmPath: state.bmPath === path ? target : state.bmPath });
   reconcileSoon(); return true;
 }
 async function deleteBookmark(path) {
-  dirty.delete(path); writing++; try { await fs.remove(path); } catch (e) { writing--; flash('Save failed'); return; } writing--;
+  dirty.delete(path); writing++; try { await fs.remove(path); } catch (e) { writing--; flash(t('Save failed')); return; } writing--;
   set({ bookmarks: state.bookmarks.filter(x => x.path !== path), bmPath: state.bmPath === path ? null : state.bmPath, confirm: null, bookmarkModal: null });
   reconcileSoon();
 }
 // A bookmark into the sermon: fill the current scripture block when it is empty, otherwise add a scripture block after the current one.
 function useBookmark(bm) {
-  const s = open(); if (!s) return null; const r = lookupNow(bm.meta.reference); if (!r) { flash('Reference not found'); return null; }
+  const s = open(); if (!s) return null; const r = lookupNow(bm.meta.reference); if (!r) { flash(t('Reference not found')); return null; }
   const cur = s.blocks.find(b => b.id === state.curBlock);
   return insertScripture(r.ref, r.verses, cur ? cur.id : null);
 }
 // The Bible screen: a reference (or the remembered chapter) in a full reading page; `←` returns to the sermon it came from.
 // The Bible screen remembers the screen it was opened from (`bibleFrom`) and `←` returns there; `bibleReturn` is the sermon, when there is one, for Insert.
-function openBible(ref) { clearTimeout(saveTimer); flushDisk(); if (state.screen === 'bible') return; const back = state.screen === 'sermon' ? state.openPath : null; set({ screen: 'bible', bibleSlide: false, bibleFrom: { screen: state.screen, openPath: state.openPath }, bibleReturn: back, bibleQuery: ref || '', drawer: false, kindMenu: null, findOpen: false, podium: false }); window.scrollTo(0, 0); }
-function leaveBible() { const back = state.bibleReturn, from = state.bibleFrom || {}; set({ bibleReturn: null, bibleFrom: null, drawer: false }); if (back && sermonOf(back)) return openSermon(back); if (['illustrations', 'bookmarks', 'templates'].includes(from.screen)) { set({ screen: from.screen, openPath: from.openPath && sermonOf(from.openPath) ? from.openPath : null }); window.scrollTo(0, 0); return; } set({ screen: 'library', openPath: null }); }
+function openBible(ref) { clearTimeout(saveTimer); flushDisk(); if (state.screen === 'bible') { if (ref) set({ bibleQuery: ref }); return; } const back = state.screen === 'sermon' ? state.openPath : null; set({ screen: 'bible', bibleSlide: false, bibleFrom: { screen: state.screen, openPath: state.openPath }, bibleReturn: back, bibleQuery: ref || '', drawer: false, kindMenu: null, findOpen: false, podium: false }); window.scrollTo(0, 0); }
+function leaveBible() { const back = state.bibleReturn, from = state.bibleFrom || {}; setHash(''); set({ bibleReturn: null, bibleFrom: null, drawer: false }); if (back && sermonOf(back)) return openSermon(back); if (['illustrations', 'bookmarks', 'templates'].includes(from.screen)) { set({ screen: from.screen, openPath: from.openPath && sermonOf(from.openPath) ? from.openPath : null }); window.scrollTo(0, 0); return; } set({ screen: 'library', openPath: null }); }
 function setBiblePos(pos) { lsSet('sermon.biblepos', JSON.stringify(pos)); set({ biblePos: pos }); }
 // Insert from the Bible screen: back to the sermon, then the scripture block after the block that was current.
 function insertFromBible(ref, vs) { const back = state.bibleReturn; if (!back || !sermonOf(back)) return false; const cur = state.curBlock; leaveBible(); set({ curBlock: cur }); insertScripture(ref, vs, cur); return true; }
@@ -534,7 +552,7 @@ let dict = null, noteTimer = null;
 const inserter = createInserter(() => (state.curBlock && document.querySelector('[data-bid="' + state.curBlock + '"] .body')) || document.querySelector('.blocks .body'));
 function startDictation() {
   if (state.dictation || state.screen !== 'sermon' || !state.openPath || state.podium) return false;
-  if (!dictationBackend()) { set({ alert: 'Dictation requires Google Chrome.' }); return false; }
+  if (!dictationBackend()) { set({ alert: t('Dictation requires Google Chrome.') }); return false; }
   if (!inserter.begin()) return false;
   dict = createDictation({
     onState: st => { if (st === 'off') { inserter.end(); dict = null; clearTimeout(noteTimer); set({ dictation: null, dictPartial: '', dictLevel: 0, dictNote: '' }); } else set({ dictation: st }); },
@@ -584,10 +602,10 @@ function closeLibFind() { set({ libFindOpen: false, libQuery: '' }); }
 // A new sermon needs a collection to land in: with none yet, the Collection modal comes first.
 function newSermon(extra = {}) { if (!state.collections.length) return set({ collectionModal: { create: true } }); set({ sermonModal: { create: true, ...extra } }); }
 function openTemplates() { set({ screen: 'templates', openPath: null, settingsOpen: false }); window.scrollTo(0, 0); }
-function newTemplate() { set({ nameDialog: { placeholder: 'Template name', onSave: async t => { const p = await createSermon({ title: t, template: true }); if (p) openSermon(p); } } }); }
+function newTemplate() { set({ nameDialog: { placeholder: t('Template name'), onSave: async name => { const p = await createSermon({ title: name, template: true }); if (p) openSermon(p); } } }); }
 function closeMenus() { set({ printMenu: false, settingsOpen: false, servicesOpen: false, colorsOpen: false, confirm: null, sermonModal: null, collectionModal: null, nameDialog: null, newDialog: false, kindMenu: null, alert: null, slotMenu: null, guestModal: null, pillarModal: null, repeatPick: null, bookmarkModal: null }); }
 const stop = e => e.stopPropagation();
 // Headless QA hook: window.__sb.setLibrary(handle) then window.__sb.loadLibrary(name).
 if (typeof window !== 'undefined') window.__sb = Object.assign(window.__sb || {}, { loadLibrary, get, set, reconcile, flushDisk, startDictation, stopDictation });
-SB.store = { DEFAULTS, get, set, useStore, applyTheme, flash, sermonOf, open, touch, illustrationText, loadLibrary, sortSermons, boot, pickFolder, resumeFolder, logout, reconcile, markDirty, flushDisk, saveNow, setSettings, setPlan, openSermon, closeSermon, updateSermon, updateOpen, createSermon, commitMeta, deleteSermon, duplicateSermon, addPreached, removePreached, movePreached, guestKey, addGuest, updateGuest, removeGuest, addPillar, updatePillar, removePillar, setCollectionMeta, createCollection, renameCollection, deleteCollection, insertBlock, removeBlock, moveBlock, moveBlockTo, duplicateBlock, setKind, toggleFold, toggleFlag, setBlock, fillScripture, setReference, insertScripture, arriveAt, createIllustration, updateIllustration, renameIllustration, deleteIllustration, createBookmark, updateBookmark, renameBookmark, deleteBookmark, useBookmark, openBookmarks, leaveBookmarks, openBible, leaveBible, setBiblePos, insertFromBible, startDictation, stopDictation, toggleDictation, toggleRail, toggleDrawer, toggleBible, setBibleMode, setCalScope, toggleIll, useIllustration, openIllustrations, leaveIllustrations, setSermonNotes, setNotes, toggleNotes, setNotesTab, toggleBibleSlide, setLibView, setLibLayout, closeLibFind, newSermon, openTemplates, newTemplate, closeMenus, stop };
+SB.store = { DEFAULTS, get, set, useStore, applyTheme, flash, sermonOf, open, touch, illustrationText, loadLibrary, sortSermons, boot, pickFolder, resumeFolder, logout, reconcile, markDirty, flushDisk, saveNow, setSettings, setPlan, openSermon, closeSermon, updateSermon, updateOpen, createSermon, commitMeta, deleteSermon, duplicateSermon, addPreached, removePreached, movePreached, guestKey, addGuest, updateGuest, removeGuest, addPillar, updatePillar, removePillar, setCollectionMeta, createCollection, renameCollection, deleteCollection, insertBlock, removeBlock, moveBlock, moveBlockTo, duplicateBlock, setKind, toggleFold, toggleFlag, setBlock, fillScripture, setReference, insertScripture, arriveAt, createIllustration, updateIllustration, renameIllustration, deleteIllustration, createBookmark, updateBookmark, renameBookmark, deleteBookmark, useBookmark, openBookmarks, leaveBookmarks, openBible, leaveBible, setBiblePos, setHash, insertFromBible, startDictation, stopDictation, toggleDictation, toggleRail, toggleDrawer, toggleBible, setBibleMode, setCalScope, toggleIll, useIllustration, openIllustrations, leaveIllustrations, setSermonNotes, setNotes, toggleNotes, setNotesTab, toggleBibleSlide, setLibView, setLibLayout, closeLibFind, newSermon, openTemplates, newTemplate, closeMenus, stop };
 })(globalThis.SB ||= {});

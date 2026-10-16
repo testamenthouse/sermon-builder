@@ -1,6 +1,7 @@
 (function (SB) {
 'use strict';
 const { html } = SB.lib.html;
+const { t } = SB.lib.i18n;
 const { useStore, pickFolder, resumeFolder } = SB.store;
 const { WRITER_URL, onPages } = SB.shared.library;
 const { mobile } = SB.lib.dictation;
@@ -11,14 +12,14 @@ function GitHubLink() {
 }
 // Footer on the Pages host: the sister app for books.
 function CrossLink() {
-  return ON_PAGES ? html`<div className="cross">Writing books? Check out <a href=${WRITER_URL} target="_blank" rel="noopener">Minimalist Writer</a>.</div>` : null;
+  return ON_PAGES ? html`<div className="cross">${t('Writing books? Check out')} <a href=${WRITER_URL} target="_blank" rel="noopener">Minimalist Writer</a>.</div>` : null;
 }
 function Gate() {
   const { resumable, gateStatus, gateLink } = useStore(s => ({ resumable: s.resumable, gateStatus: s.gateStatus, gateLink: s.gateLink }));
   return html`<div className="gate">
     <h1>Sermon Builder</h1>
-    ${resumable ? html`<><button className="pb" onClick=${resumeFolder}>Resume</button><button className="tb" onClick=${pickFolder}>Open folder</button></>` : html`<button className="pb" onClick=${pickFolder}>Open folder</button>`}
-    ${gateLink ? html`<a className="tb" href=${gateLink} target="_blank" rel="noopener">Open Writer</a>` : null}
+    ${resumable ? html`<><button className="pb" onClick=${resumeFolder}>${t('Resume')}</button><button className="tb" onClick=${pickFolder}>${t('Open folder')}</button></>` : html`<button className="pb" onClick=${pickFolder}>${t('Open folder')}</button>`}
+    ${gateLink ? html`<a className="tb" href=${gateLink} target="_blank" rel="noopener">${t('Open Writer')}</a>` : null}
     <div className="status">${gateStatus}</div>
     <${GitHubLink} /><${CrossLink} />
   </div>`;
@@ -28,8 +29,8 @@ function Gate() {
 function Blocked() {
   return html`<div className="gate">
     <h1>Sermon Builder</h1>
-    ${mobile() ? null : html`<a className="pb" href="https://www.google.com/chrome/">Get Google Chrome</a>`}
-    <div className="status">Desktop Google Chrome required</div>
+    ${mobile() ? null : html`<a className="pb" href="https://www.google.com/chrome/">${t('Get Google Chrome')}</a>`}
+    <div className="status">${t('Desktop Google Chrome required')}</div>
     <${GitHubLink} /><${CrossLink} />
   </div>`;
 }

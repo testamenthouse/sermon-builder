@@ -7,6 +7,8 @@ const { STATUSES } = SB.shared.format;
 const { doPrint, doPrintCollection, fmtDate } = SB.lib.print;
 const { DAYS, slotService, parsePreached, roadmapText } = SB.shared.planning;
 const { findBookmark } = SB.shared.bookmarks;
+const { TRANSLATIONS, translationOf } = SB.lib.bible;
+const { t, cap, LANGS } = SB.lib.i18n;
 const { I, KIND_ICON } = SB.ui.Icons;
 const { KINDS, KIND_COLORS, DEFAULT_KIND_COLORS } = SB.shared.blocks;
 const { TagsInput } = SB.ui.Tags;
@@ -14,7 +16,6 @@ const { Select } = SB.ui.Select;
 const { Combo } = SB.ui.Combo;
 
 const PALETTE = ['', '#d9d9d9', '#f5c2c2', '#f8d9a8', '#f6e7a1', '#c8e6c9', '#bfe0f5', '#d6ccf2', '#f5c8e2'];
-const cap = s => s[0].toUpperCase() + s.slice(1);
 const today = () => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
 
 function Scrim({ onClose, children, z }) {
@@ -30,27 +31,27 @@ function Alert() {
   const a = useStore(s => s.alert); if (!a) return null;
   return html`<${Scrim} onClose=${() => set({ alert: null })} z=${22}>
     <h3>${a}</h3>
-    <div className="acts"><button className="pb sm" onClick=${() => set({ alert: null })}>OK</button></div>
+    <div className="acts"><button className="pb sm" onClick=${() => set({ alert: null })}>${t('OK')}</button></div>
   <//>`;
 }
 // Stop, bottom right while dictating — always visible, unlike the hover-revealed mic that started it.
 function DictationStop() {
   const { on, side } = useStore(s => ({ on: s.dictation, side: (s.biblePane || s.illPane) && !s.narrow }));
   if (!on) return null;
-  return html`<button className="dict-stop" style=${{ right: side ? 360 : 20 }} onMouseDown=${e => e.preventDefault()} onClick=${stopDictation}><${I} name="mic" size=${14} />Stop</button>`;
+  return html`<button className="dict-stop" style=${{ right: side ? 360 : 20 }} onMouseDown=${e => e.preventDefault()} onClick=${stopDictation}><${I} name="mic" size=${14} />${t('Stop')}</button>`;
 }
 // Live dictation: a pulsing dot and the words not yet committed, bottom center.
 function DictationBar() {
   const { on, partial, level, note } = useStore(s => ({ on: s.dictation, partial: s.dictPartial, level: s.dictLevel, note: s.dictNote }));
   if (!on) return null;
   // the dot pulses while idle and swells with the microphone level, so a silent mic is visible
-  return html`<div className="dict" onMouseDown=${e => e.preventDefault()}><span className=${'dot' + (level > 0.05 ? ' hot' : '')} style=${{ transform: 'scale(' + (1 + level * 1.2).toFixed(2) + ')' }} /><span className="live">${partial ? html`<span>${partial}</span>` : html`<span className="status">${note || (on === 'starting' ? 'Starting' : 'Listening')}</span>`}</span></div>`;
+  return html`<div className="dict" onMouseDown=${e => e.preventDefault()}><span className=${'dot' + (level > 0.05 ? ' hot' : '')} style=${{ transform: 'scale(' + (1 + level * 1.2).toFixed(2) + ')' }} /><span className="live">${partial ? html`<span>${partial}</span>` : html`<span className="status">${note || t(on === 'starting' ? 'Starting' : 'Listening')}</span>`}</span></div>`;
 }
 function Confirm() {
   const c = useStore(s => s.confirm); if (!c) return null;
   return html`<${Scrim} onClose=${() => set({ confirm: null })} z=${22}>
-    <h3>Delete “${c.title}”?</h3>
-    <div className="acts"><button className="cb" onClick=${() => set({ confirm: null })}>Cancel</button><button className="pb sm" onClick=${c.onYes}>Delete</button></div>
+    <h3>${t('Delete “{title}”?', { title: c.title })}</h3>
+    <div className="acts"><button className="cb" onClick=${() => set({ confirm: null })}>${t('Cancel')}</button><button className="pb sm" onClick=${c.onYes}>${t('Delete')}</button></div>
   <//>`;
 }
 
@@ -76,31 +77,31 @@ function SermonForm({ m, collections, services, templates }) {
     else { const path = await createSermon({ ...patch, templatePath: tplPath }); closeMenus(); if (path) openSermon(path); }
   };
   const onKey = e => { if (e.key === 'Enter') { e.preventDefault(); save(); } };
-  const asTemplate = async () => { const path = await createSermon({ title: v.title.trim() || meta.title, passage: v.passage.trim(), tags: v.tags, template: true, templatePath: m.path }); closeMenus(); if (path) flash('Template saved'); };
+  const asTemplate = async () => { const path = await createSermon({ title: v.title.trim() || meta.title, passage: v.passage.trim(), tags: v.tags, template: true, templatePath: m.path }); closeMenus(); if (path) flash(t('Template saved')); };
   const dup = async () => { closeMenus(); const p = await duplicateSermon(m.path); if (p) openSermon(p); };
   const isTpl = existing && existing.meta.template;
   const setP = (i, patch) => setV({ ...v, preached: v.preached.map((p, k) => k === i ? { ...p, ...patch } : p) });
   return html`<${Scrim} onClose=${closeMenus}>
-    <input ref=${nameRef} className="name" placeholder=${isTpl ? 'Template name' : 'Sermon title'} value=${v.title} onChange=${upd('title')} onKeyDown=${onKey} />
-    ${!isTpl && html`<div className="r"><label>Collection</label><${Select} className="in" value=${v.collection} onChange=${collection => setV({ ...v, collection })} options=${collections.map(s => ({ value: s.name, label: s.name }))} /></div>`}
-    ${!isTpl && html`<div className="r"><label>Date</label><input className="in" type="date" value=${v.date} onChange=${e => setV({ ...v, date: e.target.value, service: v.service || slotService('', e.target.value, services) })} onKeyDown=${onKey} /></div>`}
-    ${!isTpl && services.length > 0 && html`<div className="r"><label>Service</label><${Select} className="in" value=${v.service} onChange=${service => setV({ ...v, service })} options=${serviceOptions(services)} /></div>`}
-    <div className="r"><label>Passage</label><input className="in" value=${v.passage} onChange=${upd('passage')} onKeyDown=${onKey} /></div>
-    ${!isTpl && html`<div className="r"><label>Status</label><div className="seg">${STATUSES.map(s => html`<button key=${s} className=${v.status === s ? 'on' : ''} onClick=${() => setV({ ...v, status: s })}>${cap(s)}</button>`)}</div></div>`}
-    <div className="r"><label>Tags</label><${TagsInput} className="in" value=${v.tags} onChange=${tags => setV({ ...v, tags })} onKeyDown=${onKey} /></div>
-    ${!isTpl && html`<div className="r"><label>Length</label><input className="in num" inputMode="numeric" value=${v.length} onChange=${upd('length')} onKeyDown=${onKey} /><span className="status">min</span></div>`}
-    ${existing && !isTpl && html`<div className="r top"><label>Preached again</label><div className="stack">
+    <input ref=${nameRef} className="name" placeholder=${t(isTpl ? 'Template name' : 'Sermon title')} value=${v.title} onChange=${upd('title')} onKeyDown=${onKey} />
+    ${!isTpl && html`<div className="r"><label>${t('Collection')}</label><${Select} className="in" value=${v.collection} onChange=${collection => setV({ ...v, collection })} options=${collections.map(s => ({ value: s.name, label: s.name }))} /></div>`}
+    ${!isTpl && html`<div className="r"><label>${t('Date')}</label><input className="in" type="date" value=${v.date} onChange=${e => setV({ ...v, date: e.target.value, service: v.service || slotService('', e.target.value, services) })} onKeyDown=${onKey} /></div>`}
+    ${!isTpl && services.length > 0 && html`<div className="r"><label>${t('Service')}</label><${Select} className="in" value=${v.service} onChange=${service => setV({ ...v, service })} options=${serviceOptions(services)} /></div>`}
+    <div className="r"><label>${t('Passage')}</label><input className="in" value=${v.passage} onChange=${upd('passage')} onKeyDown=${onKey} /></div>
+    ${!isTpl && html`<div className="r"><label>${t('Status')}</label><div className="seg">${STATUSES.map(s => html`<button key=${s} className=${v.status === s ? 'on' : ''} onClick=${() => setV({ ...v, status: s })}>${t(cap(s))}</button>`)}</div></div>`}
+    <div className="r"><label>${t('Tags')}</label><${TagsInput} className="in" value=${v.tags} onChange=${tags => setV({ ...v, tags })} onKeyDown=${onKey} /></div>
+    ${!isTpl && html`<div className="r"><label>${t('Length')}</label><input className="in num" inputMode="numeric" value=${v.length} onChange=${upd('length')} onKeyDown=${onKey} /><span className="status">min</span></div>`}
+    ${existing && !isTpl && html`<div className="r top"><label>${t('Preached again')}</label><div className="stack">
       ${v.preached.map((p, i) => html`<div key=${i} className="pr"><input className="in" type="date" value=${p.date} onChange=${e => setP(i, { date: e.target.value, service: p.service || slotService('', e.target.value, services) })} />
         ${services.length > 0 && html`<${Select} className="in" value=${p.service} onChange=${service => setP(i, { service })} options=${serviceOptions(services)} />`}
-        <button className="ib quiet" title="Remove" onClick=${() => setV({ ...v, preached: v.preached.filter((x, k) => k !== i) })}><${I} name="x" size=${14} /></button></div>`)}
-      <button className="ib quiet" title="Add" onClick=${() => setV({ ...v, preached: [...v.preached, { date: today(), service: slotService('', today(), services) }] })}><${I} name="plus" size=${14} /></button>
+        <button className="ib quiet" title=${t('Remove')} onClick=${() => setV({ ...v, preached: v.preached.filter((x, k) => k !== i) })}><${I} name="x" size=${14} /></button></div>`)}
+      <button className="ib quiet" title=${t('Add')} onClick=${() => setV({ ...v, preached: [...v.preached, { date: today(), service: slotService('', today(), services) }] })}><${I} name="plus" size=${14} /></button>
     </div></div>`}
-    ${!existing && html`<div className="r"><label>Template</label><${Select} className="in" up value=${tplPath} onChange=${setTplPath} options=${[{ value: '', label: 'Blank' }, ...(templates.length ? [null] : []), ...templates.map(t => ({ value: t.path, label: t.meta.title }))]} /></div>`}
-    <div className="acts"><button className="cb" onClick=${closeMenus}>Cancel</button><button className="pb sm" onClick=${save}>Save</button></div>
+    ${!existing && html`<div className="r"><label>${t('Template')}</label><${Select} className="in" up value=${tplPath} onChange=${setTplPath} options=${[{ value: '', label: t('Blank') }, ...(templates.length ? [null] : []), ...templates.map(t => ({ value: t.path, label: t.meta.title }))]} /></div>`}
+    <div className="acts"><button className="cb" onClick=${closeMenus}>${t('Cancel')}</button><button className="pb sm" onClick=${save}>${t('Save')}</button></div>
     ${existing && html`<><div className="hair" />
-      <button className="full" onClick=${dup}>${isTpl ? 'Duplicate template' : 'Duplicate sermon'}</button>
-      ${!isTpl && html`<button className="full" onClick=${asTemplate}>Save as template</button>`}
-      <button className="full" onClick=${() => set({ confirm: { title: meta.title, onYes: () => deleteSermon(m.path) } })}>${isTpl ? 'Delete template' : 'Delete sermon'}</button></>`}
+      <button className="full" onClick=${dup}>${t(isTpl ? 'Duplicate template' : 'Duplicate sermon')}</button>
+      ${!isTpl && html`<button className="full" onClick=${asTemplate}>${t('Save as template')}</button>`}
+      <button className="full" onClick=${() => set({ confirm: { title: meta.title, onYes: () => deleteSermon(m.path) } })}>${t(isTpl ? 'Delete template' : 'Delete sermon')}</button></>`}
   <//>`;
 }
 
@@ -114,16 +115,16 @@ function CollectionForm({ name }) {
   const ref = useRef(null); useEffect(() => { ref.current && ref.current.focus(); }, []);
   const close = () => set({ collectionModal: null });
   const save = async () => {
-    if (!name) { const t = v.trim(); if (!t) return close(); if (!await createCollection(t, color, idea.trim())) flash('Name in use'); return close(); }
+    if (!name) { const n = v.trim(); if (!n) return close(); if (!await createCollection(n, color, idea.trim())) flash(t('Name in use')); return close(); }
     if (color !== (s ? s.color : '') || idea.trim() !== (s ? s.big_idea || '' : '')) await setCollectionMeta(name, { color, big_idea: idea.trim() });
-    if (v.trim() && v.trim() !== name) { if (!await renameCollection(name, v.trim())) flash('Name in use'); } close(); };
+    if (v.trim() && v.trim() !== name) { if (!await renameCollection(name, v.trim())) flash(t('Name in use')); } close(); };
   const onKey = e => { if (e.key === 'Enter') save(); };
   return html`<${Scrim} onClose=${close}>
-    <input ref=${ref} className="name" placeholder="Collection name" value=${v} onChange=${e => setV(e.target.value)} onKeyDown=${onKey} />
-    <div className="r"><label>Big idea</label><input className="in" value=${idea} onChange=${e => setIdea(e.target.value)} onKeyDown=${onKey} /></div>
-    <div className="r"><label>Color</label><${Swatches} value=${color} onChange=${setColor} /></div>
-    <div className="acts"><button className="cb" onClick=${close}>Cancel</button><button className="pb sm" onClick=${save}>Save</button></div>
-    ${name && html`<><div className="hair" /><button className="full" onClick=${() => set({ confirm: { title: name, onYes: () => { deleteCollection(name); close(); } } })}>Delete collection</button></>`}
+    <input ref=${ref} className="name" placeholder=${t('Collection name')} value=${v} onChange=${e => setV(e.target.value)} onKeyDown=${onKey} />
+    <div className="r"><label>${t('Big idea')}</label><input className="in" value=${idea} onChange=${e => setIdea(e.target.value)} onKeyDown=${onKey} /></div>
+    <div className="r"><label>${t('Color')}</label><${Swatches} value=${color} onChange=${setColor} /></div>
+    <div className="acts"><button className="cb" onClick=${close}>${t('Cancel')}</button><button className="pb sm" onClick=${save}>${t('Save')}</button></div>
+    ${name && html`<><div className="hair" /><button className="full" onClick=${() => set({ confirm: { title: name, onYes: () => { deleteCollection(name); close(); } } })}>${t('Delete collection')}</button></>`}
   <//>`;
 }
 
@@ -136,20 +137,20 @@ function PrintMenu() {
   if (!col && !openPath) return null;
   const inCol = col ? sermons.filter(s => s.dir === col.name && !s.meta.template) : [];
   const go = sc => { set({ printMenu: false }); if (col) doPrintCollection(col, inCol, settings, sc, settings.pageNums); else { const s = sermonOf(openPath); if (s) doPrint(s, settings, sc, settings.pageNums); } };
-  const copy = async () => { try { await navigator.clipboard.writeText(roadmapText(col, inCol, { fmtDate })); flash('Copied'); } catch (e) { flash('Could not copy'); } set({ printMenu: false }); };
+  const copy = async () => { try { await navigator.clipboard.writeText(roadmapText(col, inCol, { fmtDate })); flash(t('Copied')); } catch (e) { flash(t('Could not copy')); } set({ printMenu: false }); };
   const cur = col ? null : sermonOf(openPath);
   const scopes = col ? ['roadmap', 'manuscript', 'outline'] : ['manuscript', 'outline', 'handout', ...(cur && (cur.notes || '').trim() ? ['notes'] : [])];
   const icon = sc => sc === 'manuscript' ? 'align' : sc === 'outline' ? 'layers' : sc === 'roadmap' ? 'calendar' : sc === 'notes' ? 'pen' : 'note';
   return html`<${Scrim} onClose=${closeMenus}>
-    <div className="status" style=${{ textAlign: 'center' }}>${col ? 'Print ' + col.name : 'Print'}</div>
+    <div className="status" style=${{ textAlign: 'center' }}>${col ? t('Print') + ' ' + col.name : t('Print')}</div>
     <div className="cards">
       ${scopes.map(sc => html`<div key=${sc} className=${'pcard' + (scope === sc ? ' on' : '')} onMouseEnter=${() => setScope(sc)} onClick=${() => go(sc)}>
-        <${I} name=${icon(sc)} size=${28} />${cap(sc)}</div>`)}
+        <${I} name=${icon(sc)} size=${28} />${t(cap(sc))}</div>`)}
     </div>
     <div className="r" style=${{ justifyContent: 'flex-end' }}>
-      ${col && html`<button className="tb" onClick=${copy}><${I} name="copy" size=${14} />Copy</button>`}
+      ${col && html`<button className="tb" onClick=${copy}><${I} name="copy" size=${14} />${t('Copy')}</button>`}
       <span className="sp" />
-      <div className="chk" onClick=${() => setSettings({ pageNums: !settings.pageNums })}><div className=${'box' + (settings.pageNums ? ' on' : '')}>${settings.pageNums && html`<${I} name="check" size=${10} />`}</div>Page numbers</div>
+      <div className="chk" onClick=${() => setSettings({ pageNums: !settings.pageNums })}><div className=${'box' + (settings.pageNums ? ' on' : '')}>${settings.pageNums && html`<${I} name="check" size=${10} />`}</div>${t('Page numbers')}</div>
     </div>
   <//>`;
 }
@@ -157,16 +158,18 @@ function PrintMenu() {
 function Settings() {
   const o = useStore(s => s.settingsOpen); const st = useStore(s => s.settings); const libName = useStore(s => s.libName); const services = useStore(s => s.plan.services);
   if (!o) return null;
-  const Seg = ({ k, opts, fmt = x => x }) => html`<div className="seg">${opts.map(v => html`<button key=${v} className=${st[k] === v ? 'on' : ''} onClick=${() => setSettings({ [k]: v })}>${fmt(v)}</button>`)}</div>`;
+  const Seg = ({ k, opts, fmt = x => x, tip }) => html`<div className="seg">${opts.map(v => html`<button key=${v} className=${st[k] === v ? 'on' : ''} title=${tip ? tip(v) : undefined} onClick=${() => setSettings({ [k]: v })}>${fmt(v)}</button>`)}</div>`;
   return html`<${Scrim} onClose=${closeMenus}>
-    <div className="r"><label>Folder</label><span style=${{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>${libName}</span><button className="tb" onClick=${async () => { closeMenus(); await logout(); pickFolder(); }}>Change</button></div>
-    <div className="r"><label>Services</label><span className="status" style=${{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>${services.map(s => s.name).join(' · ')}</span><button className="tb" onClick=${() => set({ settingsOpen: false, servicesOpen: true })}>Edit</button></div>
-    <div className="r"><label>Font</label><${Seg} k="font" opts=${['sans', 'serif', 'mono', 'courier']} /></div>
-    <div className="r"><label>Text size</label><${Seg} k="size" opts=${[16, 18, 20, 22]} /><span className="status">px</span></div>
-    <div className="r"><label>Theme</label><${Seg} k="theme" opts=${['system', 'light', 'dark']} fmt=${cap} /></div>
-    <div className="r"><label>Podium text size</label><${Seg} k="podium" opts=${[24, 28, 32, 36]} /><span className="status">px</span></div>
-    <div className="r"><label>Colors</label><div className="kc-row" style=${{ flex: 1 }}>${KINDS.filter(k => (st.colors || {})[k.kind]).map(k => html`<span key=${k.kind} className="kc-dot" style=${{ background: st.colors[k.kind] }} />`)}</div><button className="tb" onClick=${() => set({ settingsOpen: false, colorsOpen: true })}>Edit</button></div>
-    <div className="hair" style=${{ paddingTop: 10 }}><button className="full" onClick=${() => { closeMenus(); logout(); }}>Log out</button></div>
+    <div className="r"><label>${t('Folder')}</label><span style=${{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>${libName}</span><button className="tb" onClick=${async () => { closeMenus(); await logout(); pickFolder(); }}>${t('Change')}</button></div>
+    <div className="r"><label>${t('Services')}</label><span className="status" style=${{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>${services.map(s => s.name).join(' · ')}</span><button className="tb" onClick=${() => set({ settingsOpen: false, servicesOpen: true })}>${t('Edit')}</button></div>
+    <div className="r"><label>${t('Language')}</label><${Seg} k="language" opts=${LANGS.map(l => l.id)} fmt=${id => LANGS.find(l => l.id === id).label} /></div>
+    <div className="r"><label>${t('Translation')}</label><${Seg} k="translation" opts=${TRANSLATIONS.map(x => x.id)} fmt=${id => translationOf(id).abbr} tip=${id => translationOf(id).name} /></div>
+    <div className="r"><label>${t('Font')}</label><${Seg} k="font" opts=${['sans', 'serif', 'mono', 'courier']} /></div>
+    <div className="r"><label>${t('Text size')}</label><${Seg} k="size" opts=${[16, 18, 20, 22]} /><span className="status">px</span></div>
+    <div className="r"><label>${t('Theme')}</label><${Seg} k="theme" opts=${['system', 'light', 'dark']} fmt=${v => t(cap(v))} /></div>
+    <div className="r"><label>${t('Podium text size')}</label><${Seg} k="podium" opts=${[24, 28, 32, 36]} /><span className="status">px</span></div>
+    <div className="r"><label>${t('Colors')}</label><div className="kc-row" style=${{ flex: 1 }}>${KINDS.filter(k => (st.colors || {})[k.kind]).map(k => html`<span key=${k.kind} className="kc-dot" style=${{ background: st.colors[k.kind] }} />`)}</div><button className="tb" onClick=${() => set({ settingsOpen: false, colorsOpen: true })}>${t('Edit')}</button></div>
+    <div className="hair" style=${{ paddingTop: 10 }}><button className="full" onClick=${() => { closeMenus(); logout(); }}>${t('Log out')}</button></div>
   <//>`;
 }
 
@@ -181,13 +184,13 @@ function ServicesDialog() {
   const upd = (i, patch) => setRows(rows.map((r, k) => k === i ? { ...r, ...patch } : r));
   return html`<${Scrim} onClose=${back}>
     ${rows.map((r, i) => html`<div key=${i} className="r svc">
-      <input className="in" placeholder="Service" value=${r.name} onChange=${e => upd(i, { name: e.target.value })} />
-      <${Select} className="in" value=${r.day} onChange=${day => upd(i, { day })} options=${DAYS.map((d, k) => ({ value: k, label: d }))} />
+      <input className="in" placeholder=${t('Service')} value=${r.name} onChange=${e => upd(i, { name: e.target.value })} />
+      <${Select} className="in" value=${r.day} onChange=${day => upd(i, { day })} options=${DAYS.map((d, k) => ({ value: k, label: t(d) }))} />
       <input className="in time" type="time" value=${r.time} onChange=${e => upd(i, { time: e.target.value })} />
-      <button className="ib quiet" title="Remove" onClick=${() => setRows(rows.filter((x, k) => k !== i))}><${I} name="x" size=${14} /></button>
+      <button className="ib quiet" title=${t('Remove')} onClick=${() => setRows(rows.filter((x, k) => k !== i))}><${I} name="x" size=${14} /></button>
     </div>`)}
-    <div className="r"><button className="ib quiet" title="Add" onClick=${() => setRows([...rows, { name: '', day: 0, time: '' }])}><${I} name="plus" size=${14} /></button></div>
-    <div className="acts"><button className="cb" onClick=${back}>Cancel</button><button className="pb sm" onClick=${save}>Save</button></div>
+    <div className="r"><button className="ib quiet" title=${t('Add')} onClick=${() => setRows([...rows, { name: '', day: 0, time: '' }])}><${I} name="plus" size=${14} /></button></div>
+    <div className="acts"><button className="cb" onClick=${back}>${t('Cancel')}</button><button className="pb sm" onClick=${save}>${t('Save')}</button></div>
   <//>`;
 }
 
@@ -205,11 +208,11 @@ function GuestForm({ m, guests, services }) {
   const save = async () => { const name = v.name.trim(); if (!name || !v.date) return close(); close(); if (g) await updateGuest(m.key, { ...v, name }); else await addGuest({ ...v, name }); };
   const onKey = e => { if (e.key === 'Enter') { e.preventDefault(); save(); } };
   return html`<${Scrim} onClose=${close}>
-    <div className="r"><label>Guest</label><${Combo} className="in name-in" placeholder="Name" value=${v.name} onChange=${name => setV({ ...v, name })} options=${names} onKeyDown=${onKey} /></div>
-    <div className="r"><label>Date</label><input className="in" type="date" value=${v.date} onChange=${e => setV({ ...v, date: e.target.value, service: v.service || slotService('', e.target.value, services) })} onKeyDown=${onKey} /></div>
-    ${services.length > 0 && html`<div className="r"><label>Service</label><${Select} className="in" value=${v.service} onChange=${service => setV({ ...v, service })} options=${serviceOptions(services)} /></div>`}
-    <div className="acts"><button className="cb" onClick=${close}>Cancel</button><button className="pb sm" onClick=${save}>Save</button></div>
-    ${g && html`<><div className="hair" /><button className="full" onClick=${() => set({ confirm: { title: g.name, onYes: () => removeGuest(m.key) } })}>Delete guest</button></>`}
+    <div className="r"><label>${t('Guest')}</label><${Combo} className="in name-in" placeholder=${t('Name')} value=${v.name} onChange=${name => setV({ ...v, name })} options=${names} onKeyDown=${onKey} /></div>
+    <div className="r"><label>${t('Date')}</label><input className="in" type="date" value=${v.date} onChange=${e => setV({ ...v, date: e.target.value, service: v.service || slotService('', e.target.value, services) })} onKeyDown=${onKey} /></div>
+    ${services.length > 0 && html`<div className="r"><label>${t('Service')}</label><${Select} className="in" value=${v.service} onChange=${service => setV({ ...v, service })} options=${serviceOptions(services)} /></div>`}
+    <div className="acts"><button className="cb" onClick=${close}>${t('Cancel')}</button><button className="pb sm" onClick=${save}>${t('Save')}</button></div>
+    ${g && html`<><div className="hair" /><button className="full" onClick=${() => set({ confirm: { title: g.name, onYes: () => removeGuest(m.key) } })}>${t('Delete guest')}</button></>`}
   <//>`;
 }
 
@@ -227,12 +230,12 @@ function PillarForm({ m, pillars }) {
   const save = async () => { const name = v.name.trim(); if (!name || !v.from || !v.to) return close(); const next = { ...v, name, to: v.to < v.from ? v.from : v.to }; close(); if (p) await updatePillar(m.index, next); else await addPillar(next); };
   const onKey = e => { if (e.key === 'Enter') { e.preventDefault(); save(); } };
   return html`<${Scrim} onClose=${close}>
-    <input ref=${ref} className="name" placeholder="Pillar" value=${v.name} onChange=${e => setV({ ...v, name: e.target.value })} onKeyDown=${onKey} />
-    <div className="r"><label>From</label><input className="in" type="month" value=${v.from} onChange=${e => setV({ ...v, from: e.target.value })} onKeyDown=${onKey} /></div>
-    <div className="r"><label>To</label><input className="in" type="month" value=${v.to} onChange=${e => setV({ ...v, to: e.target.value })} onKeyDown=${onKey} /></div>
-    <div className="r"><label>Color</label><${Swatches} value=${v.color} onChange=${color => setV({ ...v, color })} /></div>
-    <div className="acts"><button className="cb" onClick=${close}>Cancel</button><button className="pb sm" onClick=${save}>Save</button></div>
-    ${p && html`<><div className="hair" /><button className="full" onClick=${() => set({ confirm: { title: p.name, onYes: () => removePillar(m.index) } })}>Delete pillar</button></>`}
+    <input ref=${ref} className="name" placeholder=${t('Pillar')} value=${v.name} onChange=${e => setV({ ...v, name: e.target.value })} onKeyDown=${onKey} />
+    <div className="r"><label>${t('From')}</label><input className="in" type="month" value=${v.from} onChange=${e => setV({ ...v, from: e.target.value })} onKeyDown=${onKey} /></div>
+    <div className="r"><label>${t('To')}</label><input className="in" type="month" value=${v.to} onChange=${e => setV({ ...v, to: e.target.value })} onKeyDown=${onKey} /></div>
+    <div className="r"><label>${t('Color')}</label><${Swatches} value=${v.color} onChange=${color => setV({ ...v, color })} /></div>
+    <div className="acts"><button className="cb" onClick=${close}>${t('Cancel')}</button><button className="pb sm" onClick=${save}>${t('Save')}</button></div>
+    ${p && html`<><div className="hair" /><button className="full" onClick=${() => set({ confirm: { title: p.name, onYes: () => removePillar(m.index) } })}>${t('Delete pillar')}</button></>`}
   <//>`;
 }
 
@@ -245,10 +248,10 @@ function RepeatPick() {
   const needle = q.trim().toLowerCase();
   const list = sermons.filter(s => !s.meta.template && (!needle || [s.meta.title, s.meta.passage, s.meta.collection, ...s.meta.tags].join(' ').toLowerCase().includes(needle))).sort((a, b) => a.meta.title.localeCompare(b.meta.title));
   const close = () => set({ repeatPick: null });
-  const pick = async s => { close(); await addPreached(s.path, m.date, m.service); flash('Added'); };
+  const pick = async s => { close(); await addPreached(s.path, m.date, m.service); flash(t('Added')); };
   return html`<${Scrim} onClose=${close}>
     <div className="status">${fmtDate(m.date)}${m.service ? ' · ' + m.service : ''}</div>
-    <input ref=${ref} className="name" placeholder="Find" value=${q} onChange=${e => setQ(e.target.value)} onKeyDown=${e => { if (e.key === 'Enter' && list[0]) pick(list[0]); }} />
+    <input ref=${ref} className="name" placeholder=${t('Find')} value=${q} onChange=${e => setQ(e.target.value)} onKeyDown=${e => { if (e.key === 'Enter' && list[0]) pick(list[0]); }} />
     <div className="picklist">${list.map(s => html`<div key=${s.path} className="row" onClick=${() => pick(s)}><span className="t">${s.meta.title}</span><span className="m">${[s.meta.collection, s.meta.date ? fmtDate(s.meta.date) : ''].filter(Boolean).join(' · ')}</span></div>`)}</div>
   <//>`;
 }
@@ -266,14 +269,14 @@ function BookmarkForm({ m, bm }) {
   const save = async () => {
     close();
     if (bm) updateBookmark(bm.path, b => { b.meta.tags = tags; b.body = note; });
-    else { const p = await createBookmark({ reference: m.reference, tags, body: note }); if (p) flash('Bookmarked'); }
+    else { const p = await createBookmark({ reference: m.reference, tags, body: note }); if (p) flash(t('Bookmarked')); }
   };
   return html`<${Scrim} onClose=${close}>
     <h3>${bm ? bm.meta.reference : m.reference}</h3>
-    <div className="r"><label>Tags</label><${TagsInput} className="in" value=${tags} onChange=${setTags} /></div>
-    <div className="r top"><label>Note</label><textarea className="in note" rows="4" value=${note} onChange=${e => setNote(e.target.value)} /></div>
-    <div className="acts"><button className="cb" onClick=${close}>Cancel</button><button className="pb sm" onClick=${save}>Save</button></div>
-    ${bm && html`<><div className="hair" /><button className="full" onClick=${() => set({ confirm: { title: bm.meta.reference, onYes: () => deleteBookmark(bm.path) } })}>Delete bookmark</button></>`}
+    <div className="r"><label>${t('Tags')}</label><${TagsInput} className="in" value=${tags} onChange=${setTags} /></div>
+    <div className="r top"><label>${t('Note')}</label><textarea className="in note" rows="4" value=${note} onChange=${e => setNote(e.target.value)} /></div>
+    <div className="acts"><button className="cb" onClick=${close}>${t('Cancel')}</button><button className="pb sm" onClick=${save}>${t('Save')}</button></div>
+    ${bm && html`<><div className="hair" /><button className="full" onClick=${() => set({ confirm: { title: bm.meta.reference, onYes: () => deleteBookmark(bm.path) } })}>${t('Delete bookmark')}</button></>`}
   <//>`;
 }
 
@@ -285,9 +288,9 @@ function SlotMenu() {
   const row = (label, fn) => html`<button onMouseDown=${e => e.preventDefault()} onClick=${() => { set({ slotMenu: null }); fn(); }}>${label}</button>`;
   const left = Math.min(m.x, window.innerWidth - 200);
   return html`<div ref=${ref} className="pop fixed" style=${{ top: m.y, left }}>
-    ${row('New sermon', () => newSermon({ date: m.date, service: m.service }))}
-    ${row('Repeat sermon', () => set({ repeatPick: { date: m.date, service: m.service } }))}
-    ${row('Guest speaker', () => set({ guestModal: { create: true, date: m.date, service: m.service } }))}
+    ${row(t('New sermon'), () => newSermon({ date: m.date, service: m.service }))}
+    ${row(t('Repeat sermon'), () => set({ repeatPick: { date: m.date, service: m.service } }))}
+    ${row(t('Guest speaker'), () => set({ guestModal: { create: true, date: m.date, service: m.service } }))}
   </div>`;
 }
 
@@ -297,9 +300,9 @@ function KindColors() {
   if (!o) return null;
   const pick = (kind, c) => setSettings({ colors: { ...colors, [kind]: c } });
   return html`<${Scrim} onClose=${() => set({ colorsOpen: false, settingsOpen: true })}>
-    ${KINDS.map(k => html`<div key=${k.kind} className="r"><label style=${{ display: 'flex', alignItems: 'center', gap: 8, color: colors[k.kind] || 'var(--muted)' }}><${I} name=${KIND_ICON[k.kind] || 'box'} size=${14} />${k.label}</label>
+    ${KINDS.map(k => html`<div key=${k.kind} className="r"><label style=${{ display: 'flex', alignItems: 'center', gap: 8, color: colors[k.kind] || 'var(--muted)' }}><${I} name=${KIND_ICON[k.kind] || 'box'} size=${14} />${t(k.label)}</label>
       <div className="swatches">${KIND_COLORS.map(c => html`<div key=${c || 'none'} className=${'sw' + ((colors[k.kind] || '') === c ? ' on' : '')} style=${{ background: c || 'var(--bg)' }} onClick=${() => pick(k.kind, c)} />`)}</div></div>`)}
-    <div className="hair" style=${{ paddingTop: 10 }}><button className="full" onClick=${() => setSettings({ colors: { ...DEFAULT_KIND_COLORS } })}>Reset</button></div>
+    <div className="hair" style=${{ paddingTop: 10 }}><button className="full" onClick=${() => setSettings({ colors: { ...DEFAULT_KIND_COLORS } })}>${t('Reset')}</button></div>
   <//>`;
 }
 
@@ -311,7 +314,7 @@ function NameDialog() {
   const save = () => { const t = v.trim(); close(); if (t) d.onSave(t); };
   return html`<${Scrim} onClose=${close}>
     <input ref=${ref} className="name" placeholder=${d.placeholder} value=${v} onChange=${e => setV(e.target.value)} onKeyDown=${e => { if (e.key === 'Enter') save(); }} />
-    <div className="acts"><button className="cb" onClick=${close}>Cancel</button><button className="pb sm" onClick=${save}>Save</button></div>
+    <div className="acts"><button className="cb" onClick=${close}>${t('Cancel')}</button><button className="pb sm" onClick=${save}>${t('Save')}</button></div>
   <//>`;
 }
 (SB.ui ||= {}).Overlays = { PALETTE, Scrim, Alert, DictationStop, DictationBar, Confirm, SermonModal, CollectionModal, PrintMenu, Settings, ServicesDialog, GuestModal, PillarModal, RepeatPick, BookmarkModal, SlotMenu, KindColors, NameDialog };

@@ -1,6 +1,7 @@
 (function (SB) {
 'use strict';
 const { html } = SB.lib.html;
+const { t } = SB.lib.i18n;
 const { useEffect, useRef } = React;
 const { useStore, setNotes, setSermonNotes, toggleNotes, setNotesTab, toggleBibleSlide } = SB.store;
 const { BibleSlide: BibleRead } = SB.ui.Bible;
@@ -40,8 +41,8 @@ function listify(el, kind) {
 function EdgeTabs() {
   const { notes, bibleOpen, screen } = useStore(s => ({ notes: s.notesOpen, bibleOpen: s.bibleSlide, screen: s.screen }));
   return html`<div className=${'edge' + (notes || bibleOpen ? ' shift' : '')}>
-    ${screen !== 'bible' && html`<button className=${bibleOpen ? 'on' : ''} title="Bible" onClick=${() => toggleBibleSlide()}><${I} name="book" /></button>`}
-    <button className=${notes ? 'on' : ''} title="Notes" onClick=${() => toggleNotes()}><${I} name="pen" /></button>
+    ${screen !== 'bible' && html`<button className=${bibleOpen ? 'on' : ''} title=${t('Bible')} onClick=${() => toggleBibleSlide()}><${I} name="book" /></button>`}
+    <button className=${notes ? 'on' : ''} title=${t('Notes')} onClick=${() => toggleNotes()}><${I} name="pen" /></button>
   </div>`;
 }
 function BibleSlide() {
@@ -64,19 +65,19 @@ function Notepad() {
   <${BibleSlide} />
   <div className=${'np' + (open ? ' open' : '')} onKeyDown=${e => { if (e.key === 'Escape') { e.stopPropagation(); toggleNotes(false); } }}>
     <div className="np-h">
-      ${sermon ? html`<div className="views np-tabs"><button className=${which === 'sermon' ? 'on' : ''} onClick=${() => setNotesTab('sermon')}>Sermon</button><button className=${which === 'library' ? 'on' : ''} onClick=${() => setNotesTab('library')}>Library</button></div>` : html`<div className="views np-tabs"><button className="on">Library</button></div>`}
+      ${sermon ? html`<div className="views np-tabs"><button className=${which === 'sermon' ? 'on' : ''} onClick=${() => setNotesTab('sermon')}>${t('Sermon')}</button><button className=${which === 'library' ? 'on' : ''} onClick=${() => setNotesTab('library')}>${t('Library')}</button></div>` : html`<div className="views np-tabs"><button className="on">${t('Library')}</button></div>`}
       <span style=${{ flex: 1 }} />
-      ${value.trim() && !reading ? html`<button className="ib quiet" title="Print" onClick=${print}><${I} name="printer" /></button>` : null}
-      <button className="ib quiet" title="Close" onClick=${() => toggleNotes(false)}><${I} name="chevron-right" /></button>
+      ${value.trim() && !reading ? html`<button className="ib quiet" title=${t('Print')} onClick=${print}><${I} name="printer" /></button>` : null}
+      <button className="ib quiet" title=${t('Close')} onClick=${() => toggleNotes(false)}><${I} name="chevron-right" /></button>
     </div>
     <div className="np-f">
-      <button className="ib quiet" title="Bold" onMouseDown=${act(el => wrap(el, '**'))}><${I} name="bold" /></button>
-      <button className="ib quiet" title="Italic" onMouseDown=${act(el => wrap(el, '*'))}><${I} name="italic" /></button>
-      <button className="ib quiet" title="Bullets" onMouseDown=${act(el => listify(el, 'ul'))}><${I} name="list" /></button>
-      <button className="ib quiet" title="Numbers" onMouseDown=${act(el => listify(el, 'ol'))}><${I} name="list-ol" /></button>
-      <button className="ib quiet" title="Checklist" onMouseDown=${act(el => listify(el, 'task'))}><${I} name="checklist" /></button>
+      <button className="ib quiet" title=${t('Bold')} onMouseDown=${act(el => wrap(el, '**'))}><${I} name="bold" /></button>
+      <button className="ib quiet" title=${t('Italic')} onMouseDown=${act(el => wrap(el, '*'))}><${I} name="italic" /></button>
+      <button className="ib quiet" title=${t('Bullets')} onMouseDown=${act(el => listify(el, 'ul'))}><${I} name="list" /></button>
+      <button className="ib quiet" title=${t('Numbers')} onMouseDown=${act(el => listify(el, 'ol'))}><${I} name="list-ol" /></button>
+      <button className="ib quiet" title=${t('Checklist')} onMouseDown=${act(el => listify(el, 'task'))}><${I} name="checklist" /></button>
     </div>
-    <div className="np-body"><${MdEditor} key=${which === 'sermon' ? sermon.path : 'library'} editorRef=${ed} className="np-ed" value=${value} placeholder="Notes" onChange=${onChange} /></div>
+    <div className="np-body"><${MdEditor} key=${which === 'sermon' ? sermon.path : 'library'} editorRef=${ed} className="np-ed" value=${value} placeholder=${t('Notes')} onChange=${onChange} /></div>
   </div>
   </>`;
 }

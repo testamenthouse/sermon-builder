@@ -1,6 +1,7 @@
 (function (SB) {
 'use strict';
 const { html } = SB.lib.html;
+const { t, kindName, cap } = SB.lib.i18n;
 const { useEffect, useRef, useState } = React;
 const { useStore, set, open, closeSermon, toggleRail, toggleBible, toggleIll, commitMeta, updateOpen, touch, moveBlockTo, removeBlock, deleteSermon, saveNow, flash, toggleFold, toggleDictation, arriveAt } = SB.store;
 const { Block, Gap } = SB.ui.Block;
@@ -8,16 +9,15 @@ const { BiblePane } = SB.ui.BiblePane;
 const { IllPane } = SB.ui.IllPane;
 const { MobileTop, DrawerScrim } = SB.ui.Mobile;
 const { I, KIND_ICON } = SB.ui.Icons;
-const { kindLabel, kindColor } = SB.shared.blocks;
+const { kindColor } = SB.shared.blocks;
 const { sermonWords, serializeSermon, slugify } = SB.shared.format;
 const { headingOf, metaLine } = SB.lib.print;
 const { pointNumbers, outlineTree, groupRange, snapDrop } = SB.shared.outline;
 const { versesPdf } = SB.lib.verses;
-const { loadBible, lookupNow } = SB.lib.bible;
+const { loadBible, lookupNow, translation } = SB.lib.bible;
 const { docxBlob } = SB.lib.docx;
 const { download } = SB.lib.zip;
 
-const cap = s => s[0].toUpperCase() + s.slice(1);
 
 // The rail outline: one row per block, points as folding containers over their group.
 // Dragging a point row carries its group; the drop line only lands between groups (shared/outline.js).
@@ -44,14 +44,14 @@ function Outline({ s, min }) {
   const lineBefore = over !== null && over !== undefined ? visible.find(b => idx.get(b.id) >= over) : null, lineAfter = over !== null && over !== undefined && !lineBefore ? visible[visible.length - 1] : null;
   const dropCls = b => lineBefore && lineBefore.id === b.id ? ' drop-before' : lineAfter && lineAfter.id === b.id ? ' drop-after' : '';
   const glyph = b => nums.has(b.id) ? html`<span className="n">${nums.get(b.id)}</span>` : html`<span className="k"><${I} name=${KIND_ICON[b.kind] || 'box'} size=${14} /></span>`;
-  const label = b => b.heading && b.kind !== 'quote' ? b.heading : headingOf(b) || kindLabel(b);
+  const label = b => b.heading && b.kind !== 'quote' ? b.heading : headingOf(b) || kindName(b);
   const del = b => set({ confirm: { title: label(b), onYes: () => removeBlock(b.id) } });
-  if (min) return html`<div className="outline" style=${{ alignItems: 'center' }}>${s.blocks.map(b => html`<div key=${b.id} className=${'mini' + (b.id === cur ? ' cur' : '') + (b.id === dragging ? ' dragging' : '') + dropCls(b)} title=${b.heading || kindLabel(b)} style=${kc(b)} onClick=${() => go(b)} ...${dnd(b)}>${nums.has(b.id) ? nums.get(b.id) : html`<${I} name=${KIND_ICON[b.kind] || 'box'} size=${14} />`}</div>`)}</div>`;
+  if (min) return html`<div className="outline" style=${{ alignItems: 'center' }}>${s.blocks.map(b => html`<div key=${b.id} className=${'mini' + (b.id === cur ? ' cur' : '') + (b.id === dragging ? ' dragging' : '') + dropCls(b)} title=${b.heading || kindName(b)} style=${kc(b)} onClick=${() => go(b)} ...${dnd(b)}>${nums.has(b.id) ? nums.get(b.id) : html`<${I} name=${KIND_ICON[b.kind] || 'box'} size=${14} />`}</div>`)}</div>`;
   const row = (b, folds) => html`<div key=${b.id} className=${'row' + (b.id === cur ? ' cur' : '') + (!b.body.trim() && !b.heading.trim() ? ' ph' : '') + (b.id === dragging ? ' dragging' : '') + dropCls(b)} style=${kc(b)} onClick=${() => go(b)} ...${dnd(b)}>
     <span className="grip reveal"><${I} name="grip" size=${12} /></span>
     ${glyph(b)}<span className="t">${label(b)}</span>
-    ${folds && html`<button className=${'ib quiet fold' + (fold[b.id] ? ' on' : '')} title=${fold[b.id] ? 'Expand' : 'Collapse'} onClick=${e => { e.stopPropagation(); toggleFold(b.id); }}><${I} name=${fold[b.id] ? 'chevron-right' : 'chevron-down'} size=${14} /></button>`}
-    <button className="ib quiet del" title="Delete" onClick=${e => { e.stopPropagation(); del(b); }}><${I} name="trash" size=${14} /></button>
+    ${folds && html`<button className=${'ib quiet fold' + (fold[b.id] ? ' on' : '')} title=${t(fold[b.id] ? 'Expand' : 'Collapse')} onClick=${e => { e.stopPropagation(); toggleFold(b.id); }}><${I} name=${fold[b.id] ? 'chevron-right' : 'chevron-down'} size=${14} /></button>`}
+    <button className="ib quiet del" title=${t('Delete')} onClick=${e => { e.stopPropagation(); del(b); }}><${I} name="trash" size=${14} /></button>
   </div>`;
   return html`<div className="outline">${tree.map(sec => {
     if (sec.type === 'transition') return row(sec.block);
@@ -106,11 +106,11 @@ function DownloadMenu({ s, onClose }) {
   const ref = useRef(null); const settings = useStore(st => st.settings);
   useEffect(() => { const h = e => { if (ref.current && !ref.current.contains(e.target)) onClose(); }; document.addEventListener('pointerdown', h, true); return () => document.removeEventListener('pointerdown', h, true); }, []);
   const name = slugify(s.meta.title);
-  const go = fn => () => { onClose(); fn(); flash('Downloaded'); };
+  const go = fn => () => { onClose(); fn(); flash(t('Downloaded')); };
   return html`<div ref=${ref} className="pop" style=${{ top: '100%', right: 0 }}>
-    <button onClick=${go(() => download(new Blob([serializeSermon(s)], { type: 'text/markdown' }), name + '.md'))}>Markdown</button>
-    <button onClick=${go(() => download(docxBlob(s, settings.colors), name + '.docx'))}>Word</button>
-    <button onClick=${go(async () => { await loadBible().catch(() => {}); download(versesPdf(s, { lookup: lookupNow, metaLine: metaLine(s.meta) }), name + ' — Verses.pdf'); })}>Verse list</button>
+    <button onClick=${go(() => download(new Blob([serializeSermon(s)], { type: 'text/markdown' }), name + '.md'))}>${t('Markdown')}</button>
+    <button onClick=${go(() => download(docxBlob(s, settings.colors), name + '.docx'))}>${t('Word')}</button>
+    <button onClick=${go(async () => { await loadBible().catch(() => {}); download(versesPdf(s, { lookup: lookupNow, metaLine: metaLine(s.meta), version: translation().abbr }), name + ' — ' + t('Verses') + '.pdf'); })}>${t('Verse list')}</button>
   </div>`;
 }
 
@@ -145,22 +145,22 @@ function Sermon() {
       ${railMin ? html`<>
         <button className="ib" onClick=${closeSermon}><${I} name="arrow-left" /></button>
         <${Outline} s=${s} min />
-        <div className="mini" onClick=${() => set({ kindMenu: { mode: 'insert', index: s.blocks.length } })} title="Add"><${I} name="plus" size=${14} /></div>
+        <div className="mini" onClick=${() => set({ kindMenu: { mode: 'insert', index: s.blocks.length } })} title=${t('Add')}><${I} name="plus" size=${14} /></div>
         <div style=${{ flex: 1 }} />
         <div className="mini" onClick=${() => set({ settingsOpen: true })}><${I} name="settings" size=${14} /></div>
         <button className="ib quiet" onClick=${toggleRail}><${I} name="chevron-right" /></button>
       </>` : html`<>
         <div className="rail-top">
           <button className="ib" onClick=${closeSermon}><${I} name="arrow-left" /></button><span style=${{ flex: 1 }} />
-          <button className="ib reveal" title="Podium" onClick=${() => set({ podium: true, drawer: false })}><${I} name="play" /></button>
-          <button className="ib reveal" title="Print" onClick=${() => set({ printMenu: true, drawer: false })}><${I} name="printer" /></button>
-          <span style=${{ position: 'relative' }}><button className="ib reveal" title="Download" onClick=${() => setDl(!dl)}><${I} name="download" /></button>${dl && html`<${DownloadMenu} s=${s} onClose=${() => setDl(false)} />`}</span>
-          <button className="ib reveal" title="Sermon" onClick=${() => set({ sermonModal: { path: s.path }, drawer: false })}><${I} name="settings" /></button>
+          <button className="ib reveal" title=${t('Podium')} onClick=${() => set({ podium: true, drawer: false })}><${I} name="play" /></button>
+          <button className="ib reveal" title=${t('Print')} onClick=${() => set({ printMenu: true, drawer: false })}><${I} name="printer" /></button>
+          <span style=${{ position: 'relative' }}><button className="ib reveal" title=${t('Download')} onClick=${() => setDl(!dl)}><${I} name="download" /></button>${dl && html`<${DownloadMenu} s=${s} onClose=${() => setDl(false)} />`}</span>
+          <button className="ib reveal" title=${t('Sermon')} onClick=${() => set({ sermonModal: { path: s.path }, drawer: false })}><${I} name="settings" /></button>
         </div>
         <h2>${s.meta.title}</h2>
         <${Outline} s=${s} />
         <div className="rail-bot">
-          <button className="tb" onClick=${() => set({ settingsOpen: true, drawer: false })}><${I} name="settings" />Settings</button>
+          <button className="tb" onClick=${() => set({ settingsOpen: true, drawer: false })}><${I} name="settings" />${t('Settings')}</button>
           <span className="status">${status}</span>
           ${!narrow && html`<button className="ib quiet" onClick=${toggleRail}><${I} name="chevron-left" /></button>`}
         </div>
@@ -168,27 +168,27 @@ function Sermon() {
     </div>
     <div className="main">
       <div className=${'tools group' + (findOpen ? ' show' : '')} style=${{ left: narrow ? 0 : railMin ? 56 : 280, right: narrow || !side ? 0 : 340 }}>
-        ${findOpen && html`<div className="find"><input ref=${findRef} placeholder="Find" value=${find} onChange=${e => set({ find: e.target.value, findIdx: 0 })} onKeyDown=${e => { if (e.key === 'Enter') { e.preventDefault(); step(e.shiftKey ? -1 : 1); } else if (e.key === 'Escape') { e.stopPropagation(); set({ findOpen: false }); } }} />
+        ${findOpen && html`<div className="find"><input ref=${findRef} placeholder=${t('Find')} value=${find} onChange=${e => set({ find: e.target.value, findIdx: 0 })} onKeyDown=${e => { if (e.key === 'Enter') { e.preventDefault(); step(e.shiftKey ? -1 : 1); } else if (e.key === 'Escape') { e.stopPropagation(); set({ findOpen: false }); } }} />
           <span className="c">${find ? (findCount ? (findIdx + 1) + '/' + findCount : '0') : ''}</span><button className="ib quiet" onClick=${() => step(-1)}><${I} name="chevron-left" size=${14} /></button><button className="ib quiet" onClick=${() => step(1)}><${I} name="chevron-right" size=${14} /></button></div>`}
-        <button className=${'ib reveal' + (findOpen ? ' show on' : '')} title="Find" onClick=${() => set({ findOpen: !findOpen, findIdx: 0 })}><${I} name="search" /></button>
-        <button className=${'ib reveal' + (biblePane ? ' show on' : '')} title="Bible" onClick=${toggleBible}><${I} name="book" /></button>
-        <button className=${'ib reveal' + (illPane ? ' show on' : '')} title="Illustrations" onClick=${() => toggleIll()}><${I} name="bulb" /></button>
-        <button className=${'ib reveal' + (dictation ? ' show on' : '')} title="Dictate" onMouseDown=${e => e.preventDefault()} onClick=${toggleDictation}><${I} name="mic" /></button>
-        <button className="ib reveal" title="Podium" onClick=${() => set({ podium: true })}><${I} name="play" /></button>
+        <button className=${'ib reveal' + (findOpen ? ' show on' : '')} title=${t('Find')} onClick=${() => set({ findOpen: !findOpen, findIdx: 0 })}><${I} name="search" /></button>
+        <button className=${'ib reveal' + (biblePane ? ' show on' : '')} title=${t('Bible')} onClick=${toggleBible}><${I} name="book" /></button>
+        <button className=${'ib reveal' + (illPane ? ' show on' : '')} title=${t('Illustrations')} onClick=${() => toggleIll()}><${I} name="bulb" /></button>
+        <button className=${'ib reveal' + (dictation ? ' show on' : '')} title=${t('Dictate')} onMouseDown=${e => e.preventDefault()} onClick=${toggleDictation}><${I} name="mic" /></button>
+        <button className="ib reveal" title=${t('Podium')} onClick=${() => set({ podium: true })}><${I} name="play" /></button>
         ${!narrow && html`<>
-        <button className="ib reveal" title="Print" onClick=${() => set({ printMenu: true })}><${I} name="printer" /></button>
-        <span style=${{ position: 'relative' }}><button className=${'ib reveal' + (dlT ? ' show on' : '')} title="Download" onClick=${() => setDlT(!dlT)}><${I} name="download" /></button>${dlT && html`<${DownloadMenu} s=${s} onClose=${() => setDlT(false)} />`}</span>
-        <button className="ib reveal" title="Delete" onClick=${() => set({ confirm: { title: s.meta.title, onYes: () => deleteSermon(s.path) } })}><${I} name="trash" /></button>
+        <button className="ib reveal" title=${t('Print')} onClick=${() => set({ printMenu: true })}><${I} name="printer" /></button>
+        <span style=${{ position: 'relative' }}><button className=${'ib reveal' + (dlT ? ' show on' : '')} title=${t('Download')} onClick=${() => setDlT(!dlT)}><${I} name="download" /></button>${dlT && html`<${DownloadMenu} s=${s} onClose=${() => setDlT(false)} />`}</span>
+        <button className="ib reveal" title=${t('Delete')} onClick=${() => set({ confirm: { title: s.meta.title, onYes: () => deleteSermon(s.path) } })}><${I} name="trash" /></button>
         </>`}
       </div>
       <div className="page">
-        ${(railMin || narrow) && html`<div className="caption">${s.meta.collection || (s.meta.template ? 'Template' : '')}</div>`}
-        <h1 ref=${titleRef} className="title" contentEditable suppressContentEditableWarning data-ph=${s.meta.template ? 'Template name' : 'Sermon title'} onBlur=${commitTitle} onKeyDown=${e => { if (e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur(); ideaRef.current && ideaRef.current.focus(); } }} />
-        <div className="metaline" onClick=${() => set({ sermonModal: { path: s.path } })}>${ml ? ml.split(' · ').map((x, i) => html`<span key=${i}>${i ? '· ' : ''}${x}</span>`) : html`<span>${s.meta.template ? 'Template' : cap(s.meta.status)}</span>`}${ml && s.meta.status !== 'draft' && !s.meta.template ? html`<span>· ${cap(s.meta.status)}</span>` : null}</div>
-        <div ref=${ideaRef} className="bigidea" contentEditable suppressContentEditableWarning data-ph="Big idea" onInput=${e => { touch(); const v = e.currentTarget.textContent.replace(/\n/g, ' '); updateOpen(x => { x.meta.big_idea = v; }); }} onKeyDown=${e => { if (e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur(); const f = s.blocks[0]; if (f) set({ curBlock: f.id, focusReq: { id: f.id, where: 'start' } }); } }} />
+        ${(railMin || narrow) && html`<div className="caption">${s.meta.collection || (s.meta.template ? t('Template') : '')}</div>`}
+        <h1 ref=${titleRef} className="title" contentEditable suppressContentEditableWarning data-ph=${t(s.meta.template ? 'Template name' : 'Sermon title')} onBlur=${commitTitle} onKeyDown=${e => { if (e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur(); ideaRef.current && ideaRef.current.focus(); } }} />
+        <div className="metaline" onClick=${() => set({ sermonModal: { path: s.path } })}>${ml ? ml.split(' · ').map((x, i) => html`<span key=${i}>${i ? '· ' : ''}${x}</span>`) : html`<span>${s.meta.template ? t('Template') : t(cap(s.meta.status))}</span>`}${ml && s.meta.status !== 'draft' && !s.meta.template ? html`<span>· ${t(cap(s.meta.status))}</span>` : null}</div>
+        <div ref=${ideaRef} className="bigidea" contentEditable suppressContentEditableWarning data-ph=${t('Big idea')} onInput=${e => { touch(); const v = e.currentTarget.textContent.replace(/\n/g, ' '); updateOpen(x => { x.meta.big_idea = v; }); }} onKeyDown=${e => { if (e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur(); const f = s.blocks[0]; if (f) set({ curBlock: f.id, focusReq: { id: f.id, where: 'start' } }); } }} />
         <${Groups} s=${s} nums=${nums} curBlock=${curBlock} blocksRef=${blocksRef} />
       </div>
-      <div className="counts" style=${{ right: (side && !narrow ? 360 : 20) + (dictation ? 88 : 0) }}>${words} words</div>
+      <div className="counts" style=${{ right: (side && !narrow ? 360 : 20) + (dictation ? 88 : 0) }}>${t('{n} words', { n: words })}</div>
     </div>
     ${biblePane && html`<${BiblePane} />`}
     ${illPane && html`<${IllPane} />`}

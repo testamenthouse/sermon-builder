@@ -33,7 +33,7 @@ Chrome has everything the app needs, dictation included.
 ## What it does
 
 - **Blocks, not a blank page.** A sermon is an ordered list of blocks: introduction, point, scripture, illustration, application, quote, transition, conclusion, prayer, invitation, question, note, and custom. Points auto-number and group the blocks beneath them.
-- **KJV built in.** Type `John 3:16-18` in a scripture block and the verses appear. A Bible pane does reference lookup, keyword search, and insert or copy.
+- **Three Bibles built in.** King James, American Standard (1901) and Reina-Valera 1909, all public domain; pick one in Settings. Type `John 3:16-18` (or `Juan 3:16-18`) in a scripture block and the verses appear. A Bible pane does reference lookup, keyword search, and insert or copy.
 - **Illustrations library.** Keep stories, tagged and sourced, in one place and drop them into any sermon. The library shows where each one has been used.
 - **Podium mode.** Fullscreen, one block at a time, a countdown clock set to your target length, your notes on or off, and an outline to jump around.
 - **Print and export.** Manuscript, outline, or handout on Letter paper. Markdown and Word downloads. A verse-list PDF for the media team.
@@ -41,7 +41,8 @@ Chrome has everything the app needs, dictation included.
 - **Dictation.** Speak into any block, through Chrome's speech engine.
 - **Planning.** Your weekly services (Sunday morning teaching, Sunday morning preaching, Wednesday, or whatever yours are) become the columns of a Schedule that runs weeks ahead, with a `+` on every open slot: a new sermon, a sermon preached again, or a guest speaker. A Status view is the pipeline from Idea to Done. A Year view draws your collections across the months, with pillars (themes that span months) above them. A Scripture view shows every book of the Bible with what you have preached from it.
 - **Calendar.** See your preaching dates by month and drag a sermon to a different day.
-- **Bible.** A reading screen for the whole KJV: search a reference or words, step through chapters, highlight verses, copy them, bookmark them with a note, or insert them into the sermon you came from.
+- **Bible.** A reading screen for the whole Bible: search a reference or words and land on the verse, step through chapters, highlight verses, copy them, bookmark them with a note, or insert them into the sermon you came from. The passage on screen is in the page URL (`#John 3:16`), so a link opens straight to it.
+- **English or Spanish.** The whole interface, the Bible book names and the printed labels switch with one setting; references are understood in either language whatever the setting.
 - **Bookmarks.** Mark a chapter or a few verses from the Bible, tag it, keep a note, and drop it into any sermon later as a scripture block.
 - **Roadmap.** Print a collection as a one-page roadmap for the worship and media team, or copy it as text.
 
@@ -127,7 +128,7 @@ Each block is a `::: kind Heading` fence. Scripture bodies are written out in fu
 
 1. **New collection** with `+` in the library, then **New sermon** from the collection's own `+`. Pick a template or start blank. Nothing is created until you give it a name.
 2. **Add blocks** with the `+` that appears between blocks, or type `/` on an empty block to pick a kind. The outline on the left tracks every block. Drag rows to reorder, or use the block's `…` menu.
-3. **Scripture.** Type a reference in a scripture block's heading and press Enter. The KJV text fills in. Change the reference and the text refills.
+3. **Scripture.** Type a reference in a scripture block's heading and press Enter. The text of the translation chosen in Settings fills in. Change the reference and the text refills.
 4. **Bible pane** (`⌘B`) for lookup and keyword search. Click verses to select a range, then Insert or Copy. The expand icon opens the full Bible screen on the same passage.
 5. **Illustrations pane** (`⌘I`) to search your library and insert one. Any illustration block can be saved back to the library.
 6. **Everything autosaves** less than a second after you stop typing. `⌘S` forces it. The status line shows `Saved h:mm`.
@@ -141,7 +142,7 @@ Press `⌘⇧P` or the podium icon. Podium mode goes fullscreen with one block o
 - `Space`, `→`, or `↓` for the next block. `←` or `↑` to go back.
 - The clock top-left counts down from the sermon's target length. Click it to flip between elapsed and remaining.
 - `n` toggles your notes. `o` opens an outline overview so you can jump to any block.
-- Scripture references typed in prose are tappable and show the KJV text in a popover.
+- Scripture references typed in prose are tappable and show the verse text in a popover.
 - Blocks marked hidden never appear.
 - `Esc` leaves.
 
@@ -178,12 +179,12 @@ Dictation uses Chrome's speech engine. Other browsers cannot dictate.
 | `⌘D` | Duplicate block |
 | `⌥⌘↑` / `⌥⌘↓` | Move block up or down |
 | `/` on an empty block | Choose the block kind |
-| `Enter` in a scripture heading | Fill in the KJV text |
+| `Enter` in a scripture heading | Fill in the verse text |
 | `Esc` | Close pane, dialog, find, or Podium |
 
 ## Running the web version
 
-There is no build step. Double-click `index.html` and Chrome runs the source as it is: every file is a classic script, loaded in order by `index.html`, with React and htm vendored in `vendor/` and the King James Bible in `data/kjv/kjv.js`. A static server works too, and GitHub Pages serves this repo from its root, so the published web version is https://testamenthouse.github.io/sermon-builder/
+There is no build step. Double-click `index.html` and Chrome runs the source as it is: every file is a classic script, loaded in order by `index.html`, with React and htm vendored in `vendor/` and the King James Bible in `data/kjv/kjv.js` (the other two translations in `data/` load the first time they are chosen). A static server works too, and GitHub Pages serves this repo from its root, so the published web version is https://testamenthouse.github.io/sermon-builder/
 
 ```sh
 npm run dev        # serves this folder on http://localhost:5188, if you prefer a server
@@ -194,7 +195,7 @@ Adding a file means adding its `<script>` tag to `index.html` after the files it
 ```sh
 npm test           # file format round-trips, Bible lookup, outline, dictation, script order
 npm run vendor     # refresh vendor/ from unpkg after changing a version in scripts/vendor.js
-npm run kjv        # rebuild data/kjv/kjv.js
+npm run bible      # rebuild a translation: node scripts/build-bible.js <kjv|asv|rv1909> <source.json>
 ```
 
 ## Repository layout
@@ -203,7 +204,8 @@ npm run kjv        # rebuild data/kjv/kjv.js
 index.html      The app page. Double-click it and it runs.
 app/            The UI: React through htm tagged templates, no JSX, no build, no modules
 shared/         Pure modules shared by the app and the tests (file format, Bible, outline, templates)
-data/kjv/       The King James Bible, 66 books, 31,102 verses (public domain)
+data/           The Bibles, one folder each: kjv (King James), asv (American Standard 1901), rv1909 (Reina-Valera 1909) — public domain
+app/src/i18n/   Spanish interface strings (English is the source text in the code)
 tests/          node --test
 samples/        A small library to open on first run
 vendor/         Browser builds of React and htm (generated, never edited by hand)

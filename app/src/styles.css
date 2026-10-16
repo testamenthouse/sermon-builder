@@ -549,11 +549,12 @@ input,textarea,select{font:inherit;color:inherit;background:none}
 .vrs p .bmk{position:absolute;right:8px;top:9px;color:var(--faint);padding:2px;border-radius:4px;display:flex}
 .vrs p .bmk:hover{color:var(--fg);background:var(--line)}
 .vrs p.marked .vn{color:var(--fg)}
-.bible .hits{display:flex;flex-direction:column;gap:2px}
-.bible .hit{padding:8px 10px;border-radius:6px;cursor:pointer;font-size:14px;line-height:1.5;color:var(--muted)}
-.bible .hit:hover{background:var(--fill);color:var(--fg)}
-.bible .hit b{font-weight:500;display:block;color:var(--fg)}
-.bible .hit span{font-family:var(--content)}
+.bible .hits,.bs .hits{display:flex;flex-direction:column;gap:2px}
+.bible .hit,.bs .hit{padding:8px 10px;border-radius:6px;cursor:pointer;font-size:14px;line-height:1.5;color:var(--muted)}
+.bible .hit:hover,.bs .hit:hover{background:var(--fill);color:var(--fg)}
+.bible .hit b,.bs .hit b{font-weight:500;display:block;color:var(--fg)}
+.bible .hit span,.bs .hit span{font-family:var(--content)}
+.bs .hit{font-size:13px}
 .bible .uses{margin-top:56px}
 .actbar{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:12;display:flex;align-items:center;gap:4px;height:40px;padding:0 6px 0 14px;border:1px solid var(--line);border-radius:8px;background:var(--bg);font-size:13px;color:var(--muted);max-width:min(90vw,640px)}
 .actbar .ref{font-weight:500;color:var(--fg);margin-right:8px;white-space:nowrap}

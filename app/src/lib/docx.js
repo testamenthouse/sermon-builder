@@ -3,7 +3,8 @@
 'use strict';
 const { zip } = SB.lib.zip;
 const { mdLine } = SB.lib.md;
-const { kindLabel, kindColor } = SB.shared.blocks;
+const { kindColor } = SB.shared.blocks;
+const { t, kindName } = SB.lib.i18n;
 const { pointNumbers, metaLine } = SB.lib.print;
 
 const x = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -32,11 +33,11 @@ function bodyParas(text, scripture) {
 }
 function docxBlob(sermon, colors) {
   const { meta, blocks } = sermon, nums = pointNumbers(blocks);
-  let body = para('Title', [{ t: meta.title || 'Untitled' }]);
+  let body = para('Title', [{ t: meta.title || t('Untitled') }]);
   if (metaLine(meta)) body += para('Subtitle', [{ t: metaLine(meta) }]);
   if (meta.big_idea) body += para('Normal', [{ t: meta.big_idea, i: true }]);
   for (const b of blocks) {
-    body += para('Caption', [{ t: (nums.has(b.id) ? nums.get(b.id) + ' · ' : '') + kindLabel(b).toUpperCase(), color: (kindColor(b.kind, colors) || '#808080').slice(1), sz: 16 }]);
+    body += para('Caption', [{ t: (nums.has(b.id) ? nums.get(b.id) + ' · ' : '') + kindName(b).toUpperCase(), color: (kindColor(b.kind, colors) || '#808080').slice(1), sz: 16 }]);
     if (b.heading && b.kind !== 'quote') body += para('Heading1', runs(b.heading));
     body += bodyParas(b.body, b.kind === 'scripture');
     if (b.kind === 'quote' && b.heading) body += para('Normal', [{ t: '— ' + b.heading, i: true }]);

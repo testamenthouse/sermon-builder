@@ -1,7 +1,17 @@
-// KJV lookup, reference parsing and search. Pure functions over a loaded { version, books:[{name, chapters:[[...]]}] } object.
+// Bible lookup, reference parsing and search. Pure functions over a loaded { version, books:[{name, chapters:[[...]]}] } object —
+// any of the bundled translations (TRANSLATIONS); a null in a chapter array is a verse that translation leaves out.
 (function (SB) {
 'use strict';
 const { BOOKS, bookIndex } = SB.shared.books;
+
+// The bundled public-domain translations: data/<id>/<id>.js sets `bibles.<id>` on the global (built by scripts/build-bible.js). `abbr` is what the
+// copy suffix, the Verses PDF and a scripture block's caption say; `lang` is the text's language, not the interface's.
+const TRANSLATIONS = [
+  { id: 'kjv', abbr: 'KJV', name: 'King James Version', lang: 'en', file: 'data/kjv/kjv.js' },
+  { id: 'asv', abbr: 'ASV', name: 'American Standard Version', lang: 'en', file: 'data/asv/asv.js' },
+  { id: 'rv1909', abbr: 'RV1909', name: 'Reina-Valera 1909', lang: 'es', file: 'data/rv1909/rv1909.js' }
+];
+const translationOf = id => TRANSLATIONS.find(t => t.id === id) || TRANSLATIONS[0];
 
 const DASH = /[–—-]/;
 
@@ -9,7 +19,7 @@ const DASH = /[–—-]/;
 // Returns null when the book is unknown. Single-chapter books treat "Jude 3" as verse 3.
 function parseRef(input) {
   const s = String(input || '').trim(); if (!s) return null;
-  const m = /^((?:[1-3]|i{1,3}|1st|2nd|3rd|first|second|third)?\s*[a-z]+(?:\s+(?:of\s+)?[a-z]+)*)\.?\s*(.*)$/i.exec(s);
+  const m = /^((?:[1-3]|i{1,3}|1st|2nd|3rd|first|second|third|primera?|segunda?|tercera?|[1-3](?:a|ra|da|º|ª))?\s*[a-z\u00C0-\u024F]+(?:\s+(?:of\s+|de\s+(?:los\s+)?)?[a-z\u00C0-\u024F]+)*)\.?\s*(.*)$/i.exec(s);
   if (!m) return null;
   const book = bookIndex(m[1]); if (book < 0) return null;
   const def = BOOKS[book], refs = [];
@@ -54,7 +64,7 @@ function covers(a, b) {
 // Canonical display: "John 3:16–18", "Psalm 23", "Genesis 1:1–2:3".
 function formatRef(parsed) {
   if (!parsed || !parsed.refs.length) return '';
-  const name = i => BOOKS[i].name === 'Psalms' ? 'Psalm' : BOOKS[i].name;
+  const name = i => BOOKS[i].name === 'Psalms' ? 'Psalm' : BOOKS[i].name === 'Salmos' ? 'Salmo' : BOOKS[i].name;
   const out = []; let lastBook = -1, lastChapter = -1;
   for (const r of parsed.refs) {
     let s = '';
@@ -107,6 +117,7 @@ function search(bible, query, { books = null, limit = 200 } = {}) {
     if (set && !set.has(b)) continue;
     const chapters = bible.books[b].chapters;
     for (let c = 0; c < chapters.length; c++) for (let v = 0; v < chapters[c].length; v++) {
+      if (chapters[c][v] == null) continue;
       const t = chapters[c][v].toLowerCase();
       if (phrase ? t.includes(phrase) : terms.every(w => t.includes(w))) {
         out.push({ book: b, chapter: c + 1, verse: v + 1, text: chapters[c][v], ref: refLabel(b, c + 1, v + 1) });
@@ -129,7 +140,7 @@ function versesRef(vs) {
 function refLabel(book, chapter, verse) { return formatRef({ refs: [{ book, c1: chapter, v1: verse || 0, c2: chapter, v2: verse || 0 }] }); }
 
 // Find scripture references inside prose: [{ index, length, text, parsed }]. Used to make references tappable in Podium.
-const BOOK_RE = '(?:[1-3]\\s?|I{1,3}\\s)?(?:Song of Solomon|Song of Songs|[A-Z][a-z]{1,13})\\.?';
+const BOOK_RE = '(?:[1-3]\\s?|I{1,3}\\s)?(?:Song of Solomon|Song of Songs|Cantar de los Cantares|[A-Z\\u00C0-\\u00DE][a-z\\u00DF-\\u00FF]{1,13})\\.?';
 const INLINE = new RegExp('\\b(' + BOOK_RE + ')\\s(\\d{1,3}(?::\\d{1,3}[a-z]?)?(?:\\s?[-\\u2013]\\s?\\d{1,3}(?::\\d{1,3})?)?(?:,\\s?\\d{1,3}(?:\\s?[-\\u2013]\\s?\\d{1,3})?)*)\\b', 'g');
 function findRefs(text) {
   const out = []; let m; INLINE.lastIndex = 0;
@@ -140,5 +151,5 @@ function findRefs(text) {
   }
   return out;
 }
-(SB.shared ||= {}).bible = { BOOKS, bookIndex, parseRef, formatRef, verses, lookup, passageText, search, refLabel, versesRef, findRefs };
+(SB.shared ||= {}).bible = { TRANSLATIONS, translationOf, BOOKS, bookIndex, parseRef, formatRef, verses, lookup, passageText, search, refLabel, versesRef, findRefs };
 })(globalThis.SB ||= {});

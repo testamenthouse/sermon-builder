@@ -53,3 +53,18 @@ test('a set of verses reads as runs', () => {
   assert.equal(B.versesRef([v(1, 26), v(2, 1)]), 'Acts 1:26; 2:1');
   assert.deepEqual(B.verses(kjv, B.parseRef('Acts 1:1, 3, 5, 7')).map(x => x.verse), [1, 3, 5, 7]);
 });
+test('Spanish book names and abbreviations resolve in either language', () => {
+  assert.equal(bookIndex('Génesis'), 0); assert.equal(bookIndex('Juan'), 42); assert.equal(bookIndex('1 Juan'), 61); assert.equal(bookIndex('Hch'), 43); assert.equal(bookIndex('Stg'), 58);
+  assert.equal(bookIndex('Apocalipsis'), 65); assert.equal(bookIndex('Cantares'), 21); assert.equal(bookIndex('Sal'), 18); assert.equal(bookIndex('Primera de Juan'), 61);
+  assert.equal(formatRef(parseRef('Juan 3:16-18')), 'John 3:16–18');
+  assert.equal(formatRef(parseRef('Éxodo 20:1')), 'Exodus 20:1');
+  assert.equal(formatRef(parseRef('1 Reyes 18')), '1 Kings 18');
+  assert.deepEqual(findRefs('Lee Juan 3:16 y Salmos 23 hoy.').map(x => x.text), ['Juan 3:16', 'Salmos 23']);
+});
+test('a chapter with a verse the translation leaves out keeps its numbering', () => {
+  const asv = { version: 'ASV', books: kjv.books.map(b => ({ name: b.name, chapters: b.chapters })) };
+  asv.books[39] = { name: 'Matthew', chapters: kjv.books[39].chapters.map((ch, i) => i === 16 ? ch.map((v, k) => k === 20 ? null : v) : ch) };
+  assert.deepEqual(lookup(asv, 'Matt 17:20-22').verses.map(v => v.verse), [20, 22]);
+  assert.equal(search(asv, 'prayer and fasting').some(h => h.ref === 'Matthew 17:21'), false);
+  assert.ok(B.TRANSLATIONS.map(t => t.id).includes('rv1909'));
+});

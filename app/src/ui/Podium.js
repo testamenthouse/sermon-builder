@@ -1,12 +1,13 @@
 (function (SB) {
 'use strict';
 const { html } = SB.lib.html;
+const { t, kindName } = SB.lib.i18n;
 const { useEffect, useRef, useState } = React;
 const { useStore, set, open } = SB.store;
 const { mdHtml } = SB.lib.md;
 const { headingOf, metaLine } = SB.lib.print;
 const { pointNumbers, depths } = SB.shared.outline;
-const { kindLabel, kindColor } = SB.shared.blocks;
+const { kindColor } = SB.shared.blocks;
 const { lookupNow, loadBible } = SB.lib.bible;
 const { I, KIND_ICON } = SB.ui.Icons;
 
@@ -60,19 +61,19 @@ function Podium() {
   };
   return html`<div ref=${root} className="podium" onClick=${onClick}>
     <div className="prog" style=${{ width: blocks.length ? ((cur + 1) / blocks.length * 100) + '%' : 0 }} />
-    <button className=${'clock' + (over ? ' over' : '')} onClick=${e => { e.stopPropagation(); if (e.altKey) start.current = Date.now(); else setRemaining(!remaining); }} title="Reset: ⌥click">${clock}</button>
+    <button className=${'clock' + (over ? ' over' : '')} onClick=${e => { e.stopPropagation(); if (e.altKey) start.current = Date.now(); else setRemaining(!remaining); }} title=${t('Reset: ⌥click')}>${clock}</button>
     <button className="ib quiet x" onClick=${() => set({ podium: false })}><${I} name="x" /></button>
     ${outline ? html`<div className="ov">
       <div className="head"><h1>${s.meta.title}</h1></div>
       ${blocks.map((b, i) => html`<div key=${b.id} data-i=${i} className=${'ovr' + (i === cur ? ' cur' : '') + (depth.get(b.id) ? ' d1' : '')} style=${kc(b)} onClick=${e => { e.stopPropagation(); setOutline(false); requestAnimationFrame(() => goTo(i)); }}>
         ${nums.has(b.id) ? html`<span className="n">${nums.get(b.id)}</span>` : html`<span className="k"><${I} name=${KIND_ICON[b.kind] || 'box'} size=${18} /></span>`}
-        <span className="t">${b.kind === 'quote' ? headingOf({ body: b.body }) || 'Quote' : headingOf(b) || kindLabel(b)}</span>
-        <span className="c">${kindLabel(b)}</span>
+        <span className="t">${b.kind === 'quote' ? headingOf({ body: b.body }) || t('Quote') : headingOf(b) || kindName(b)}</span>
+        <span className="c">${kindName(b)}</span>
       </div>`)}
     </div>` : html`<div className="inner">
       <div className=${'head' + (cur > 0 ? ' off' : '')}>${metaLine(s.meta) && html`<div className="cap">${metaLine(s.meta)}</div>`}<h1>${s.meta.title}</h1>${s.meta.big_idea && html`<div className="bi">${s.meta.big_idea}</div>`}</div>
       ${blocks.map((b, i) => html`<div key=${b.id} data-i=${i} className=${'stage ' + b.kind + (i === cur ? ' cur' : '')} style=${kc(b)}>
-        <div className="cap">${kindLabel(b)}</div>
+        <div className="cap">${kindName(b)}</div>
         ${b.kind === 'scripture' && b.heading && html`<div className="hd">${b.heading}</div>`}
         ${b.heading && b.kind !== 'scripture' && b.kind !== 'quote' && html`<div className="hd">${nums.has(b.id) && html`<span className="n">${nums.get(b.id)}</span>`}${b.heading}</div>`}
         <div className="bd" dangerouslySetInnerHTML=${{ __html: mdHtml(b.body, { scripture: b.kind === 'scripture', refs: b.kind !== 'scripture' }) }} />
@@ -81,8 +82,8 @@ function Podium() {
     </div>`}
     ${pop && html`<div className="vpop" style=${{ top: pop.top, left: pop.left }} onClick=${e => e.stopPropagation()}><b>${pop.ref}</b>${pop.text}</div>`}
     <div className="aids">
-      <button className=${notes ? 'on' : ''} onClick=${e => { e.stopPropagation(); setNotes(!notes); }}>Notes</button>
-      <button className=${outline ? 'on' : ''} onClick=${e => { e.stopPropagation(); toggleOutline(); }}>Outline</button>
+      <button className=${notes ? 'on' : ''} onClick=${e => { e.stopPropagation(); setNotes(!notes); }}>${t('Notes')}</button>
+      <button className=${outline ? 'on' : ''} onClick=${e => { e.stopPropagation(); toggleOutline(); }}>${t('Outline')}</button>
     </div>
     <div className="pos">${blocks.length ? (cur + 1) + ' / ' + blocks.length : ''}</div>
   </div>`;

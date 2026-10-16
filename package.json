@@ -9,7 +9,7 @@
     "dev": "node scripts/serve.js",
     "vendor": "node scripts/vendor.js",
     "test": "node --test tests/*.test.js",
-    "kjv": "node scripts/build-kjv.js"
+    "bible": "node scripts/build-bible.js"
   },
   "dependencies": {},
   "devDependencies": {}

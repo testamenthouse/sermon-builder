@@ -4,6 +4,7 @@
 // "question mark" and the other spoken marks become punctuation (the engine does not do that itself).
 (function (SB) {
 'use strict';
+const { t } = SB.lib.i18n;
 const isChrome = () => {
   const brands = navigator.userAgentData && navigator.userAgentData.brands;
   if (brands) return brands.some(b => b.brand === 'Google Chrome');
@@ -124,14 +125,14 @@ function createDictation({ onState, onPartial, onFinal, onError, onLevel = () =>
       onPartial(spokenPunctuation(interim));
     };
     rec.onerror = e => {
-      if (e.error === 'not-allowed' || e.error === 'service-not-allowed') { fatal = true; onError('Microphone blocked'); }
-      else if (e.error === 'network') { fatal = true; onError('No connection'); }
-      else if (e.error === 'audio-capture') { fatal = true; onError('No microphone'); }
-      else if (e.error === 'no-speech') onError('No speech heard');
+      if (e.error === 'not-allowed' || e.error === 'service-not-allowed') { fatal = true; onError(t('Microphone blocked')); }
+      else if (e.error === 'network') { fatal = true; onError(t('No connection')); }
+      else if (e.error === 'audio-capture') { fatal = true; onError(t('No microphone')); }
+      else if (e.error === 'no-speech') onError(t('No speech heard'));
     };
     // Chrome ends a session after silence or a minute; keep listening until told to stop.
     rec.onend = () => { if (active && !fatal) { try { rec.start(); return; } catch (err) {} } finish(); };
-    try { rec.start(); } catch (err) { onError('Dictation failed'); finish(); }
+    try { rec.start(); } catch (err) { onError(t('Dictation failed')); finish(); }
   };
   return {
     backend: be,

@@ -7,7 +7,7 @@ const root = new URL('../', import.meta.url);
 const read = p => fs.readFileSync(new URL(p, root), 'utf8');
 const scripts = [...read('index.html').matchAll(/<script src="\.\/([^"]+)"><\/script>/g)].map(m => m[1]);
 const defOf = src => { const m = src.match(/^\(?(?:SB\.(\w+) \|\|= \{\}\)\.(\w+)|SB\.(\w+)) = \{/m); return m ? (m[1] ? `${m[1]}.${m[2]}` : m[3]) : null; };
-const refsOf = src => new Set([...src.matchAll(/\bSB\.(shared|lib|ui)\.(\w+)|\bSB\.(fs|fsa|store|app|kjv)\b/g)].map(m => m[3] || `${m[1]}.${m[2]}`));
+const refsOf = src => new Set([...src.matchAll(/\bSB\.(shared|lib|ui)\.(\w+)|\bSB\.(fs|fsa|store|app|bibles|i18n)\b/g)].map(m => m[3] || `${m[1]}.${m[2]}`));
 
 test('index.html loads every script after the ones it reads from', () => {
   assert.ok(scripts.length > 30);
@@ -15,7 +15,7 @@ test('index.html loads every script after the ones it reads from', () => {
   for (const p of scripts) {
     const src = read(p);
     if (p.startsWith('vendor/')) continue;
-    const def = p === 'data/kjv/kjv.js' ? 'kjv' : defOf(src);
+    const def = p.startsWith('data/') ? 'bibles' : p.startsWith('app/src/i18n/') ? 'i18n' : defOf(src);
     for (const r of refsOf(src)) if (r !== def) assert.ok(defined.has(r), `${p} reads SB.${r} before it is defined`);
     if (def) defined.add(def);
   }

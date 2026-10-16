@@ -2,6 +2,7 @@
 // Paths are relative, forward-slashed.
 (function (SB) {
 'use strict';
+const { t } = SB.lib.i18n;
 const DB = 'sermon', STORE = 'kv', KEY = 'lib';
 let root = null;
 
@@ -44,7 +45,7 @@ const fsa = {
   async resume() {
     let h; try { h = await kv('get'); } catch (e) { h = null; }
     if (!h) return null;
-    try { const p = await h.queryPermission({ mode: 'readwrite' }); if (p === 'granted') { root = h; try { await h.entries().next(); } catch (e) { await kv('del'); root = null; return { error: 'Folder not found' }; } return { name: h.name }; } if (p === 'prompt') return 'prompt'; } catch (e) {}
+    try { const p = await h.queryPermission({ mode: 'readwrite' }); if (p === 'granted') { root = h; try { await h.entries().next(); } catch (e) { await kv('del'); root = null; return { error: t('Folder not found') }; } return { name: h.name }; } if (p === 'prompt') return 'prompt'; } catch (e) {}
     return null;
   },
   async resumeClick() { const h = await kv('get'); if (!h) return null; try { if (await h.requestPermission({ mode: 'readwrite' }) === 'granted') { root = h; return { name: h.name }; } } catch (e) {} return null; },
