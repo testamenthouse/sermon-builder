@@ -26,7 +26,7 @@ const NARROW = window.matchMedia('(max-width: 760px)');
 let state = {
   booting: true, folderOpen: false, resumable: false, gateStatus: '', gateLink: '', libName: '',
   sermons: [], collections: [], illustrations: [], bookmarks: [], plan: EMPTY_PLAN, settings: { ...DEFAULTS, ...safeJson(ls('sermon.settings', 'null')) },
-  screen: 'library', openPath: null, curBlock: null, illPath: null, bmPath: null, bmReturn: null, bibleReturn: null, biblePos: safeJson(ls('sermon.biblepos', 'null')), bibleQuery: '', focusReq: null, calScope: ls('sermon.calscope', 'month') === 'year' ? 'year' : 'month', bibleMode: 'text',
+  screen: 'library', openPath: null, curBlock: null, illPath: null, bmPath: null, bmReturn: null, bibleReturn: null, biblePos: safeJson(ls('sermon.biblepos', 'null')), bibleQuery: '', focusReq: null, calScope: ['quarter', 'year'].includes(ls('sermon.calscope', 'month')) ? ls('sermon.calscope', 'month') : 'month', bibleMode: 'text',
   status: '', libView: { series: 'collections', collection: 'collections' }[ls('sermon.libview', 'collections')] || ls('sermon.libview', 'collections'), libLayout: ls('sermon.liblayout', 'cards'), libQuery: '', libFindOpen: false,
   railMin: ls('sermon.rail', 'max') === 'min', biblePane: ls('sermon.bible', 'closed') === 'open', illPane: ls('sermon.ill', 'closed') === 'open', illReturn: null, podium: false,
   findOpen: false, find: '', findIdx: 0, findCount: 0,

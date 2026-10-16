@@ -98,5 +98,39 @@ function roadmapText(col, sermons, { fmtDate = d => d } = {}) {
   });
   return lines.join('\n') + '\n';
 }
-(SB.shared ||= {}).planning = { DAYS, ymd, addDays, weekday, weekStart, weeksBetween, normPlan, serviceColumns, slotService, slotDate, fmtTime, parsePreached, preachedEntry, sermonDates, sermonBooks, sermonTouches, pillarSpan, dateFrac, collectionSpan, pillarsIn, roadmapText, formatRef, BOOKS };
+// Every entry that stands on a date: sermons at their date and each repeat, guests from the plan.
+function entriesByDate(sermons, guests) {
+  const by = {};
+  const put = (d, e) => (by[d] = by[d] || []).push(e);
+  for (const s of sermons) for (const e of sermonDates(s)) put(e.date, { sermon: s, repeat: e.repeat, entry: e.entry, service: e.service });
+  for (const g of guests || []) put(g.date, { guest: g, service: g.service });
+  return by;
+}
+// The schedule as data: every slot (week × service) from `from` through `to`, with the entries that land in it
+// (its own service, else the first service on its weekday, else the first — slotService). The view, the print and the CSV all read this.
+function scheduleSlots(sermons, guests, services, from, to) {
+  const cols = serviceColumns(services), by = entriesByDate(sermons, guests), inSlot = {};
+  for (const d of Object.keys(by)) for (const e of by[d]) { const k = weekStart(d) + '|' + slotService(e.service, d, services); (inSlot[k] = inSlot[k] || []).push({ ...e, date: d }); }
+  const out = [];
+  for (const w of weeksBetween(from, to)) for (const sv of cols) out.push({ week: w, service: sv, date: slotDate(w, sv), entries: inSlot[w + '|' + sv.name] || [] });
+  return out;
+}
+// What a printed or exported schedule covers: this week through the last planned entry, never less than thirteen weeks.
+function scheduleSpan(sermons, guests, today) {
+  const from = weekStart(today); let to = addDays(from, 7 * 12);
+  for (const d of Object.keys(entriesByDate(sermons, guests))) if (d > to) to = d;
+  return { from, to };
+}
+const csvCell = v => { const s = String(v == null ? '' : v); return /[",\r\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
+// One row per entry, an open slot as one empty row; RFC 4180 quoting, CRLF line ends.
+function scheduleCsv(slots) {
+  const rows = [['Week', 'Date', 'Service', 'Title', 'Collection', 'Passage', 'Status', 'Type']];
+  for (const sl of slots) {
+    if (!sl.entries.length) rows.push([sl.week, sl.date, sl.service.name, '', '', '', '', '']);
+    for (const e of sl.entries) rows.push(e.guest ? [sl.week, e.date, sl.service.name, e.guest.name, '', '', '', 'Guest']
+      : [sl.week, e.date, sl.service.name, e.sermon.meta.title, e.sermon.dir || e.sermon.meta.collection || '', e.sermon.meta.passage || '', e.sermon.meta.status || '', e.repeat ? 'Repeat' : 'Sermon']);
+  }
+  return rows.map(r => r.map(csvCell).join(',')).join('\r\n') + '\r\n';
+}
+(SB.shared ||= {}).planning = { DAYS, ymd, addDays, weekday, weekStart, weeksBetween, normPlan, serviceColumns, slotService, slotDate, fmtTime, parsePreached, preachedEntry, sermonDates, sermonBooks, sermonTouches, pillarSpan, dateFrac, collectionSpan, pillarsIn, roadmapText, formatRef, BOOKS, entriesByDate, scheduleSlots, scheduleSpan, scheduleCsv };
 })(globalThis.SB ||= {});

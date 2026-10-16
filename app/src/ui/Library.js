@@ -6,11 +6,14 @@ const { useStore, set, openSermon, setLibView, setLibLayout, setCalScope, closeL
 const { I } = SB.ui.Icons;
 const { fmtDate } = SB.lib.print;
 const { STATUSES } = SB.shared.format;
-const { DAYS, ymd, addDays, weekStart, weeksBetween, serviceColumns, slotService, slotDate, fmtTime, sermonDates, sermonBooks, pillarSpan, collectionSpan, pillarsIn, BOOKS } = SB.shared.planning;
+const { DAYS, ymd, addDays, weekStart, weeksBetween, serviceColumns, slotService, slotDate, fmtTime, sermonDates, sermonBooks, pillarSpan, collectionSpan, pillarsIn, BOOKS, entriesByDate, scheduleSlots, scheduleSpan, scheduleCsv } = SB.shared.planning;
+const { doPrintSchedule } = SB.lib.print;
+const { download } = SB.lib.zip;
 
 const cap = s => s[0].toUpperCase() + s.slice(1);
+const VIEWS = ['collections', 'dates', 'schedule', 'calendar', 'status', 'scripture'];
 const pad = n => String(n).padStart(2, '0');
-const statusOf = s => s.meta.status !== 'draft' && !s.meta.template ? cap(s.meta.status) : '';
+const statusOf = s => !s.meta.template ? cap(s.meta.status) : '';
 // What is being dragged across the library: a sermon (its date), a repeat (one preached entry), or a guest line.
 let dragging = null;
 const dragIt = (type, extra) => ({ draggable: true, onDragStart: e => { dragging = { type, ...extra }; e.dataTransfer.effectAllowed = 'move'; }, onDragEnd: () => { dragging = null; } });
@@ -76,20 +79,12 @@ function Head({ color, name, meta, onClick, onAdd, onPrint, dim }) {
 function Chip({ e, colorOf, date }) {
   if (e.guest) return html`<div className="cal-e guest" ...${dragIt('guest', { key: guestKey(e.guest), service: e.guest.service })} onClick=${() => set({ guestModal: { key: guestKey(e.guest) } })}><span className="k"><${I} name="mic" size=${12} /></span><span className="t">${e.guest.name}</span></div>`;
   const s = e.sermon, color = colorOf(s.dir);
-  return html`<div className=${'cal-e' + (s.meta.status === 'idea' ? ' idea' : '')} ...${openIt(s)} ...${e.repeat ? dragIt('repeat', { path: s.path, entry: e.entry, service: e.service }) : dragIt('sermon', { path: s.path })}>
+  return html`<div className=${'cal-e' + (s.meta.status === 'idea' ? ' idea' : '')} title=${s.meta.title} ...${openIt(s)} ...${e.repeat ? dragIt('repeat', { path: s.path, entry: e.entry, service: e.service }) : dragIt('sermon', { path: s.path })}>
     <span className="tile sm" style=${color ? { background: color } : undefined} />
     <span className="t">${s.meta.title}</span>
     ${e.repeat && html`<span className="k" title="Repeat"><${I} name="refresh" size=${11} /></span>`}
     ${date && html`<span className="dt">${date}</span>`}
   </div>`;
-}
-// Every entry that stands on a date: sermons at their date and each repeat, guests from the plan.
-function entriesByDate(sermons, guests) {
-  const by = {};
-  const put = (d, e) => (by[d] = by[d] || []).push(e);
-  for (const s of sermons) for (const e of sermonDates(s)) put(e.date, { sermon: s, repeat: e.repeat, entry: e.entry, service: e.service });
-  for (const g of guests) put(g.date, { guest: g, service: g.service });
-  return by;
 }
 // The slot + opens a small menu: New sermon · Repeat sermon · Guest speaker.
 const slotPlus = (date, service) => e => { e.stopPropagation(); const r = e.currentTarget.getBoundingClientRect(); set({ slotMenu: { date, service, x: r.left, y: r.bottom + 4 } }); };
@@ -98,20 +93,19 @@ const slotPlus = (date, service) => e => { e.stopPropagation(); const r = e.curr
 function Schedule({ sermons, guests, services, colorOf }) {
   const [over, setOver] = useState(null);
   const cols = serviceColumns(services), t = ymd(new Date());
-  const weeks = weeksBetween(t, (new Date().getFullYear() + 1) + '-12-31');
-  const by = entriesByDate(sermons, guests), slots = {};
-  for (const d of Object.keys(by)) for (const e of by[d]) { const k = weekStart(d) + '|' + slotService(e.service, d, services); (slots[k] = slots[k] || []).push({ ...e, date: d }); }
+  const weeks = new Map();
+  for (const sl of scheduleSlots(sermons, guests, services, t, (new Date().getFullYear() + 1) + '-12-31')) { if (!weeks.has(sl.week)) weeks.set(sl.week, []); weeks.get(sl.week).push(sl); }
   let lastMonth = '';
   const rows = [];
-  for (const w of weeks) {
+  for (const [w, wk] of weeks) {
     const m = w.slice(0, 7);
     if (m !== lastMonth) { lastMonth = m; rows.push(html`<div key=${'m' + m} className="sched-m">${new Date(+m.slice(0, 4), +m.slice(5, 7) - 1, 1).toLocaleDateString([], { month: 'long', year: 'numeric' })}</div>`); }
     rows.push(html`<div key=${w} className=${'sched-r' + (w === weekStart(t) ? ' now' : '')}>
       <div className="sched-d">${shortDate(w)}</div>
-      ${cols.map(sv => { const k = w + '|' + sv.name, items = slots[k] || [], d = slotDate(w, sv);
+      ${wk.map(sl => { const sv = sl.service, k = w + '|' + sv.name, d = sl.date;
         return html`<div key=${sv.name || 'x'} className=${'slot group' + (over === k ? ' over' : '')} ...${dropZone(over, setOver, k, () => dropOn(d, sv.name))}>
-          ${items.map((e, i) => html`<${Chip} key=${i} e=${e} colorOf=${colorOf} date=${e.date !== d ? shortDate(e.date) : ''} />`)}
-          <button className=${'ib quiet' + (items.length ? ' reveal' : ' open')} title="Add" onClick=${slotPlus(d, sv.name)}><${I} name="plus" size=${12} /></button>
+          ${sl.entries.map((e, i) => html`<${Chip} key=${i} e=${e} colorOf=${colorOf} date=${e.date !== d ? shortDate(e.date) : ''} />`)}
+          <button className=${'ib quiet' + (sl.entries.length ? ' reveal' : ' open')} title="Add" onClick=${slotPlus(d, sv.name)}><${I} name="plus" size=${12} /></button>
         </div>`; })}
     </div>`);
   }
@@ -121,34 +115,72 @@ function Schedule({ sermons, guests, services, colorOf }) {
   </div>`;
 }
 
-// Month grid of preaching dates. Chips open the sermon and drag to another day to move it; + on a day starts a sermon dated there.
-function Month({ sermons, guests, services, pillars, colorOf, ym, setYm }) {
-  const t = ymd(new Date()); const [over, setOver] = useState(null);
-  const y = +ym.slice(0, 4), m = +ym.slice(5, 7) - 1;
-  const shift = d => { const n = new Date(y, m + d, 1); setYm(n.getFullYear() + '-' + pad(n.getMonth() + 1)); };
+// ←/→ step the calendar while nothing editable has focus.
+function useArrows(shift) {
   useEffect(() => {
     const h = e => { if (e.metaKey || e.ctrlKey || e.altKey) return; const tag = (e.target.tagName || '').toLowerCase(); if (tag === 'input' || tag === 'textarea' || e.target.isContentEditable) return; if (e.key === 'ArrowLeft') shift(-1); else if (e.key === 'ArrowRight') shift(1); };
     document.addEventListener('keydown', h); return () => document.removeEventListener('keydown', h);
   });
+}
+// A pillar beside a month or quarter name: the pillar glyph in its color, then the name; click opens the Pillar modal.
+const pillarChip = (p, pillars) => html`<span key=${p.name + p.from} className="pill" onClick=${() => set({ pillarModal: { index: pillars.indexOf(p) } })}><${I} name="pillar" size=${12} style=${p.color ? { color: p.color } : undefined} />${p.name}</span>`;
+const monthName = (ym, year) => new Date(+ym.slice(0, 4), +ym.slice(5, 7) - 1, 1).toLocaleDateString([], year ? { month: 'long', year: 'numeric' } : { month: 'long' });
+// One month's grid of days: weekday captions, every entry a chip, a hover + on each day. Chips open the sermon and drag
+// to another day to move it. compact = the Quarter's small cells, tiles only (the chip's title is its tooltip).
+function MonthGrid({ ym, sermons, guests, services, colorOf, compact }) {
+  const t = ymd(new Date()); const [over, setOver] = useState(null);
+  const y = +ym.slice(0, 4), m = +ym.slice(5, 7) - 1;
   const by = entriesByDate(sermons, guests);
   const first = new Date(y, m, 1), days = new Date(y, m + 1, 0).getDate(), n = Math.ceil((first.getDay() + days) / 7) * 7, cells = [];
   for (let i = 0; i < n; i++) cells.push(new Date(y, m, 1 - first.getDay() + i));
-  const wd = []; for (let i = 0; i < 7; i++) wd.push(new Date(2024, 0, 7 + i).toLocaleDateString([], { weekday: 'short' }));
-  const active = pillarsIn(pillars, ym);
-  return html`<div className="cal">
-    <div className="cal-h">
-      <h2>${first.toLocaleDateString([], { month: 'long', year: 'numeric' })}</h2>
-      <button className="ib quiet" title="Previous month" onClick=${() => shift(-1)}><${I} name="chevron-left" /></button>
-      <button className="ib quiet" title="Next month" onClick=${() => shift(1)}><${I} name="chevron-right" /></button>
-      ${ym !== t.slice(0, 7) && html`<button className="tb" onClick=${() => setYm(t.slice(0, 7))}>Today</button>`}
-      ${active.map((p, i) => html`<span key=${i} className="pill" onClick=${() => set({ pillarModal: { index: pillars.indexOf(p) } })}><span className="tile sm" style=${p.color ? { background: p.color } : undefined} />${p.name}</span>`)}
-    </div>
-    <div className="cal-wd">${wd.map(w => html`<span key=${w} className="cap">${w}</span>`)}</div>
-    <div className="cal-g">${cells.map(d => { const k = ymd(d), items = by[k] || [];
+  const wd = []; for (let i = 0; i < 7; i++) wd.push(new Date(2024, 0, 7 + i).toLocaleDateString([], { weekday: compact ? 'narrow' : 'short' }));
+  return html`<>
+    <div className="cal-wd">${wd.map((w, i) => html`<span key=${i} className="cap">${w}</span>`)}</div>
+    <div className=${'cal-g' + (compact ? ' compact' : '')}>${cells.map(d => { const k = ymd(d), items = by[k] || [];
       return html`<div key=${k} className=${'cal-d group' + (d.getMonth() !== m ? ' out' : '') + (k === t ? ' today' : '') + (over === k ? ' over' : '')} ...${dropZone(over, setOver, k, () => dropOn(k))}>
         <div className="cal-n"><span>${d.getDate()}</span><button className="ib quiet reveal" title="Add" onClick=${slotPlus(k, slotService('', k, services))}><${I} name="plus" size=${12} /></button></div>
         ${items.map((e, i) => html`<${Chip} key=${i} e=${e} colorOf=${colorOf} />`)}
       </div>`; })}</div>
+  </>`;
+}
+// One month: ‹ › or ←/→ step months, Today returns, the pillars covering the month as chips beside its name.
+function Month({ sermons, guests, services, pillars, colorOf, ym, setYm }) {
+  const t = ymd(new Date());
+  const y = +ym.slice(0, 4), m = +ym.slice(5, 7) - 1;
+  const shift = d => { const n = new Date(y, m + d, 1); setYm(n.getFullYear() + '-' + pad(n.getMonth() + 1)); };
+  useArrows(shift);
+  return html`<div className="cal">
+    <div className="cal-h">
+      <h2>${monthName(ym, true)}</h2>
+      <button className="ib quiet" title="Previous month" onClick=${() => shift(-1)}><${I} name="chevron-left" /></button>
+      <button className="ib quiet" title="Next month" onClick=${() => shift(1)}><${I} name="chevron-right" /></button>
+      ${ym !== t.slice(0, 7) && html`<button className="tb" onClick=${() => setYm(t.slice(0, 7))}>Today</button>`}
+      ${pillarsIn(pillars, ym).map(p => pillarChip(p, pillars))}
+    </div>
+    <${MonthGrid} ym=${ym} sermons=${sermons} guests=${guests} services=${services} colorOf=${colorOf} />
+  </div>`;
+}
+// A quarter: the three months around the Month view's month side by side as compact grids. ‹ › or ←/→ step a quarter,
+// Today returns, a month's name opens it in Month; the pillars touching any of the three months sit beside the name.
+function Quarter({ sermons, guests, services, pillars, colorOf, ym, setYm, onMonth }) {
+  const t = ymd(new Date());
+  const y = +ym.slice(0, 4), q = Math.floor((+ym.slice(5, 7) - 1) / 3);
+  const months = [0, 1, 2].map(i => y + '-' + pad(q * 3 + i + 1));
+  const shift = d => { const n = new Date(y, q * 3 + d * 3, 1); setYm(n.getFullYear() + '-' + pad(n.getMonth() + 1)); };
+  useArrows(shift);
+  const seen = new Set(), active = months.flatMap(mo => pillarsIn(pillars, mo)).filter(p => !seen.has(p) && seen.add(p));
+  return html`<div className="cal">
+    <div className="cal-h">
+      <h2>${'Q' + (q + 1) + ' ' + y}</h2>
+      <button className="ib quiet" title="Previous quarter" onClick=${() => shift(-1)}><${I} name="chevron-left" /></button>
+      <button className="ib quiet" title="Next quarter" onClick=${() => shift(1)}><${I} name="chevron-right" /></button>
+      ${!months.includes(t.slice(0, 7)) && html`<button className="tb" onClick=${() => setYm(t.slice(0, 7))}>Today</button>`}
+      ${active.map(p => pillarChip(p, pillars))}
+    </div>
+    <div className="qtr">${months.map(mo => html`<div key=${mo} className="qtr-m">
+      <button className="cap" onClick=${() => onMonth(mo)}>${monthName(mo)}</button>
+      <${MonthGrid} ym=${mo} sermons=${sermons} guests=${guests} services=${services} colorOf=${colorOf} compact />
+    </div>`)}</div>
   </div>`;
 }
 
@@ -174,8 +206,8 @@ function Year({ sermons, collections, pillars, colorOf, year, setYear, onMonth }
       <button className="ib quiet" title="New pillar" onClick=${() => set({ pillarModal: { create: true, from: year + '-' + pad(+t.slice(5, 7)), to: year + '-' + pad(+t.slice(5, 7)) } })}><${I} name="plus" size=${14} /></button>
     </div>
     <div className="yr-g">
-      ${prow.length > 0 && html`<><div className="yr-l cap">Pillars</div>
-        <div className="yr-pillars" style=${{ height: lanes.length * 30 - 6 }}>${now}${prow.map(({ p, i, sp, lane }) => html`<div key=${i} className="yr-pbar" style=${{ left: pct(sp[0]), width: pct(sp[1] - sp[0]), top: lane * 30, background: p.color || 'var(--fill)' }} title=${p.name} onClick=${() => set({ pillarModal: { index: i } })}>${p.name}</div>`)}</div></>`}
+      ${prow.length > 0 && html`<><div className="yr-l cap"><${I} name="pillar" size=${13} />Pillars</div>
+        <div className="yr-pillars" style=${{ height: lanes.length * 30 - 6 }}>${now}${prow.map(({ p, i, sp, lane }) => html`<div key=${i} className="yr-pbar" style=${{ left: pct(sp[0]), width: pct(sp[1] - sp[0]), top: lane * 30, background: p.color || 'var(--fill)' }} title=${p.name} onClick=${() => set({ pillarModal: { index: i } })}><${I} name="pillar" size=${12} /><span className="t">${p.name}</span></div>`)}</div></>`}
       <div className="yr-l" />
       <div className="yr-months">${months.map((mn, i) => html`<button key=${i} className=${'cap' + (year + '-' + pad(i + 1) === t.slice(0, 7) ? ' now' : '')} onClick=${() => onMonth(year + '-' + pad(i + 1))}>${mn}</button>`)}</div>
       ${crow.map(({ c, sp }) => html`<${Fragment} key=${'c' + c.name}>
@@ -188,7 +220,7 @@ function Year({ sermons, collections, pillars, colorOf, year, setYear, onMonth }
 }
 
 function Library() {
-  const { libName, sermons, collections, plan, libView, libLayout, libQuery, libFindOpen, calScope, status } = useStore(s => ({ libName: s.libName, sermons: s.sermons, collections: s.collections, plan: s.plan, libView: s.libView, libLayout: s.libLayout, libQuery: s.libQuery, libFindOpen: s.libFindOpen, calScope: s.calScope, status: s.status }));
+  const { libName, sermons, collections, plan, libView, libLayout, libQuery, libFindOpen, calScope, status, settings } = useStore(s => ({ libName: s.libName, sermons: s.sermons, collections: s.collections, plan: s.plan, libView: s.libView, libLayout: s.libLayout, libQuery: s.libQuery, libFindOpen: s.libFindOpen, calScope: s.calScope, status: s.status, settings: s.settings }));
   const findRef = useRef(null); const findOpen = libFindOpen || !!libQuery;
   const t = ymd(new Date()); const [ym, setYm] = useState(t.slice(0, 7)); const [year, setYear] = useState(+t.slice(0, 4)); const [over, setOver] = useState(null);
   useEffect(() => { if (libFindOpen && findRef.current) findRef.current.focus(); }, [libFindOpen]);
@@ -204,6 +236,10 @@ function Library() {
     ? html`<${Table} list=${list} collection=${!!byCol} colorOf=${colorOf} />`
     : html`<div className="grid">${list.map(s => html`<${Card} key=${s.path} s=${s} color=${color !== undefined ? color : colorOf(s.dir)} />`)}</div>`;
   const guests = q ? plan.guests.filter(g => g.name.toLowerCase().includes(q)) : plan.guests;
+  // Print and CSV cover what the Schedule shows, from this week through the last planned entry (scheduleSpan).
+  const sched = () => { const { from, to } = scheduleSpan(real, guests, ymd(new Date())); return { from, to, slots: scheduleSlots(real, guests, plan.services, from, to) }; };
+  const printSchedule = () => { const x = sched(); doPrintSchedule(libName, x.slots, x.from, x.to, settings, settings.pageNums); };
+  const exportSchedule = () => download(new Blob(['\uFEFF' + scheduleCsv(sched().slots)], { type: 'text/csv' }), (libName ? libName + ' — ' : '') + 'Schedule.csv');
   const sec = (k, head, body, drop) => html`<div key=${k} className=${'sec' + (listMode ? ' list' : '') + (over === k ? ' over' : '')} ...${drop ? dropZone(over, setOver, k, drop) : {}}>${head}${body}</div>`;
   return html`<div className="lib">
     <div className="lib-top">
@@ -219,18 +255,23 @@ function Library() {
       <button className="ib" title="Settings" onClick=${() => set({ settingsOpen: true })}><${I} name="settings" /></button>
     </div>
     <div className="lib-bar">
-      <div className="seg">${['collections', 'dates', 'schedule', 'calendar', 'status', 'scripture'].map(v => html`<button key=${v} className=${libView === v ? 'on' : ''} onClick=${() => setLibView(v)}>${cap(v)}</button>`)}</div>
+      <div className="views">${VIEWS.map(v => html`<button key=${v} className=${libView === v ? 'on' : ''} onClick=${() => setLibView(v)}>${cap(v)}</button>`)}</div>
       <span className="sp" />
+      ${libView === 'calendar' && html`<div className="seg">${['month', 'quarter', 'year'].map(v => html`<button key=${v} className=${calScope === v ? 'on' : ''} onClick=${() => setCalScope(v)}>${cap(v)}</button>`)}</div>`}
+      ${libView === 'schedule' && html`<>
+        <button className="ib" title="Print" onClick=${printSchedule}><${I} name="printer" /></button>
+        <button className="ib" title="CSV" onClick=${exportSchedule}><${I} name="download" /></button>
+      </>`}
       ${hasLayout && html`<div className="seg">
         <button className=${!listMode ? 'on' : ''} title="Thumbnails" onClick=${() => setLibLayout('cards')}><${I} name="grid" size=${14} /></button>
         <button className=${listMode ? 'on' : ''} title="List" onClick=${() => setLibLayout('list')}><${I} name="list" size=${14} /></button>
       </div>`}
-      ${libView === 'calendar' && html`<div className="seg">${['month', 'year'].map(v => html`<button key=${v} className=${calScope === v ? 'on' : ''} onClick=${() => setCalScope(v)}>${cap(v)}</button>`)}</div>`}
     </div>
     ${!collections.length && !sermons.some(s => !s.meta.template) && html`<div className="none"><button className="pb" onClick=${() => set({ collectionModal: { create: true } })}>New collection</button></div>`}
     ${libView === 'schedule' ? html`<${Schedule} sermons=${real} guests=${guests} services=${plan.services} colorOf=${colorOf} />`
     : libView === 'calendar' ? (calScope === 'year'
       ? html`<${Year} sermons=${real} collections=${collections} pillars=${plan.pillars} colorOf=${colorOf} year=${year} setYear=${setYear} onMonth=${m => { setYm(m); setCalScope('month'); }} />`
+      : calScope === 'quarter' ? html`<${Quarter} sermons=${real} guests=${guests} services=${plan.services} pillars=${plan.pillars} colorOf=${colorOf} ym=${ym} setYm=${setYm} onMonth=${m => { setYm(m); setCalScope('month'); }} />`
       : html`<${Month} sermons=${real} guests=${guests} services=${plan.services} pillars=${plan.pillars} colorOf=${colorOf} ym=${ym} setYm=${setYm} />`)
     : libView === 'collections' ? html`<>
       ${root.length > 0 && sec('root', html`<${Head} name="Unfiled" />`, items(root, ''))}

@@ -3,6 +3,7 @@
 'use strict';
 const { mdHtml, esc } = SB.lib.md;
 const { kindLabel, kindColor } = SB.shared.blocks;
+const { DAYS, fmtTime } = SB.shared.planning;
 
 const fonts = { sans: 'Inter, -apple-system, sans-serif', serif: "Georgia, 'Iowan Old Style', 'Times New Roman', serif", mono: "'SF Mono', Menlo, Consolas, monospace", courier: "'Courier Prime', 'Courier New', Courier, monospace" };
 const fontFamily = f => fonts[f] || fonts.sans;
@@ -111,6 +112,27 @@ function doPrintCollection(col, sermons, settings, scope, paged) {
   const css = buildCss(settings, title, !!paged) + ROADMAP_CSS + '.sheet{break-after:page}.sheet:last-child{break-after:auto}';
   printDoc(docTitle, html, css);
 }
+// Schedule: one row per week, one column per service, a caption row where the month changes; a sermon as its title over
+// collection · passage (Repeat when preached again), a guest as the name over Guest; open slots stay blank for the pen.
+function buildScheduleHtml(libName, slots, from, to) {
+  const cols = []; for (const sl of slots) { if (cols.some(c => c.name === sl.service.name)) break; cols.push(sl.service); }
+  const head = '<div class="head"><div class="t">Schedule</div><div class="ml">' + esc([libName, fmtDate(from) + ' – ' + fmtDate(to)].filter(Boolean).join(' · ')) + '</div></div>';
+  const th = '<tr><th></th>' + cols.map(sv => '<th>' + esc(sv.name || DAYS[sv.day]) + '<span class="m">' + esc([DAYS[sv.day].slice(0, 3), fmtTime(sv.time)].filter(Boolean).join(' · ')) + '</span></th>').join('') + '</tr>';
+  const entry = e => e.guest ? '<div class="e g"><div class="et">' + esc(e.guest.name) + '</div><div class="em">Guest</div></div>'
+    : '<div class="e' + (e.sermon.meta.status === 'idea' ? ' idea' : '') + '"><div class="et">' + esc(e.sermon.meta.title) + '</div><div class="em">' + esc([e.sermon.dir, e.sermon.meta.passage, e.repeat ? 'Repeat' : ''].filter(Boolean).join(' · ')) + '</div></div>';
+  const weeks = new Map(); for (const sl of slots) { if (!weeks.has(sl.week)) weeks.set(sl.week, []); weeks.get(sl.week).push(sl); }
+  let lastMonth = '', body = '';
+  for (const [w, wk] of weeks) {
+    const m = w.slice(0, 7);
+    if (m !== lastMonth) { lastMonth = m; body += '<tr class="mo"><td colspan="' + (cols.length + 1) + '">' + esc(new Date(+m.slice(0, 4), +m.slice(5, 7) - 1, 1).toLocaleDateString([], { month: 'long', year: 'numeric' })) + '</td></tr>'; }
+    body += '<tr><td class="d">' + esc(fmtDate(w).replace(/,.*$/, '')) + '</td>' + wk.map(sl => '<td>' + sl.entries.map(entry).join('') + '</td>').join('') + '</tr>';
+  }
+  return head + '<table class="sc">' + th + body + '</table>';
+}
+const SCHEDULE_CSS = '.sc{width:100%;border-collapse:collapse;font-size:.85em}.sc th{text-align:left;font-weight:600;padding:0 2mm 2mm 0;vertical-align:bottom;border-bottom:1.5px solid #000}.sc th:first-child{width:18mm}.sc th .m{display:block;font-weight:400;font-size:.85em;color:#5a5a58}.sc td{vertical-align:top;padding:2mm 2mm 2mm 0;border-bottom:1px solid #d4d4d0}.sc td.d{color:#5a5a58;white-space:nowrap;font-variant-numeric:tabular-nums}.sc tr.mo td{padding-top:5mm;font-size:.8em;font-weight:600;color:#8a8a86;border-bottom:0}.sc .e{margin-bottom:1.5mm}.sc .et{font-weight:600}.sc .em{font-size:.85em;color:#5a5a58}.sc .e.g .et{font-weight:400;color:#333}.sc .e.idea .et{color:#8a8a86}.sc tr{break-inside:avoid}';
+function doPrintSchedule(libName, slots, from, to, settings, paged) {
+  printDoc('Schedule' + (libName ? ' — ' + libName : ''), buildScheduleHtml(libName, slots, from, to), buildCss(settings, 'Schedule', !!paged) + SCHEDULE_CSS);
+}
 function doPrint(sermon, settings, scope, paged) {
   const title = sermon.meta.title || 'Untitled', docTitle = title + (scope === 'manuscript' ? '' : ' — ' + scope[0].toUpperCase() + scope.slice(1));
   const html = buildHtml(sermon, scope, settings.colors);
@@ -131,5 +153,5 @@ function printDoc(docTitle, html, css) {
   const ready = () => (d.fonts ? d.fonts.ready : Promise.resolve()).then(() => setTimeout(go, 50));
   d.readyState === 'complete' ? ready() : (f.onload = ready);
 }
-(SB.lib ||= {}).print = { fontFamily, pointNumbers, headingOf, metaLine, fmtDate, buildHtml, buildRoadmapHtml, buildCss, doPrint, doPrintCollection };
+(SB.lib ||= {}).print = { fontFamily, pointNumbers, headingOf, metaLine, fmtDate, buildHtml, buildRoadmapHtml, buildCss, doPrint, doPrintCollection, buildScheduleHtml, doPrintSchedule };
 })(globalThis.SB ||= {});

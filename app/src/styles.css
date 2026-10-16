@@ -54,6 +54,11 @@ input,textarea,select{font:inherit;color:inherit;background:none}
 /* view bar: grouping on the left, thumbnails / list on the right — never in the top tool bar (user) */
 .lib-bar{display:flex;align-items:center;gap:8px;padding:0 10px;margin-bottom:28px}
 .lib-bar .seg button{display:inline-flex;align-items:center;min-height:28px}
+/* views are filters over the same sermons, not places: outlined pills, the chosen one outlined in the foreground */
+.views{display:flex;gap:6px}
+.views button{padding:4px 11px;border:1px solid var(--line);border-radius:999px;font-size:13px;color:var(--muted);min-height:28px}
+.views button:hover{color:var(--fg);border-color:var(--muted)}
+.views button.on{color:var(--fg);border-color:var(--fg)}
 .sp{flex:1}
 .sec{margin-bottom:44px}
 /* a collection heading: color tile, bold name, the months it spans, a hairline beneath */
@@ -445,6 +450,19 @@ input,textarea,select{font:inherit;color:inherit;background:none}
 .cal-e.idea .t{color:var(--faint)}
 .cal-h .pill{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);padding:3px 8px;border:1px solid var(--line);border-radius:999px;cursor:pointer;margin-left:6px}
 .cal-h .pill:hover{color:var(--fg);border-color:var(--fg)}
+.cal-h .pill svg{flex:none}
+/* quarter: three compact month grids side by side, tiles only in the cells; a month's name opens the Month view */
+.qtr{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px;align-items:start}
+.qtr-m>.cap{display:block;padding:0 0 8px 2px;border-radius:4px}
+.qtr-m>.cap:hover{color:var(--fg)}
+.qtr .cal-wd .cap{padding:0 6px}
+.cal-g.compact .cal-d{min-height:48px;padding:2px 3px 5px;flex-direction:row;flex-wrap:wrap;align-content:flex-start;gap:3px}
+.cal-g.compact .cal-n{flex:1 1 100%;min-height:20px;font-size:11px;margin:0}
+.cal-g.compact .cal-n span{width:20px;height:20px;border-radius:10px}
+.cal-g.compact .cal-e{padding:3px}
+.cal-g.compact .cal-e .t,.cal-g.compact .cal-e .dt{display:none}
+.cal-g.compact .cal-e .tile{margin:0;width:10px;height:10px}
+.cal-g.compact .cal-e .k{margin:0}
 /* schedule: weeks down, one column per service, open slots carry a + */
 .sched{display:flex;flex-direction:column}
 .sched-h,.sched-r{display:grid;grid-template-columns:88px repeat(var(--cols,1),minmax(0,1fr));gap:0 8px;align-items:start}
@@ -475,7 +493,10 @@ input,textarea,select{font:inherit;color:inherit;background:none}
 /* pillars: the band above the months, names inside the bars, overlapping pillars in lanes */
 .yr-l.cap{align-self:start;padding-top:5px;cursor:default}
 .yr-pillars{position:relative;margin-bottom:10px;background-image:linear-gradient(to right,var(--line) 1px,transparent 1px);background-size:calc(100% / 12) 100%}
-.yr-pbar{position:absolute;height:24px;line-height:24px;border-radius:6px;padding:0 10px;font-size:12px;font-weight:500;color:var(--fg);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;box-sizing:border-box}
+.yr-pbar{position:absolute;display:flex;align-items:center;gap:6px;height:24px;border-radius:6px;padding:0 10px;font-size:12px;font-weight:500;color:var(--fg);cursor:pointer;box-sizing:border-box}
+.yr-pbar svg{flex:none;opacity:.7}
+.yr-pbar .t{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.yr-l.cap svg{flex:none}
 .yr-pbar:hover{outline:1px solid var(--fg)}
 .yr-bar:hover{opacity:1;outline:1px solid var(--fg)}
 .yr-tick{position:absolute;top:5px;width:2px;height:16px;margin-left:-1px;background:var(--fg);border-radius:1px;opacity:.7;pointer-events:none}

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { planning, format } from '../shared/node.js';
-const { weekStart, weeksBetween, addDays, normPlan, slotService, slotDate, fmtTime, parsePreached, preachedEntry, sermonDates, sermonBooks, sermonTouches, pillarSpan, collectionSpan, pillarsIn, roadmapText, serviceColumns } = planning;
+const { weekStart, weeksBetween, addDays, normPlan, slotService, slotDate, fmtTime, parsePreached, preachedEntry, sermonDates, sermonBooks, sermonTouches, pillarSpan, collectionSpan, pillarsIn, roadmapText, serviceColumns, scheduleSlots, scheduleSpan, scheduleCsv } = planning;
 const { parseSermon } = format;
 
 const SERVICES = [{ name: 'Sunday morning teaching', day: 0, time: '10:00' }, { name: 'Sunday morning preaching', day: 0, time: '11:00' }, { name: 'Wednesday', day: 3, time: '19:00' }];
@@ -53,4 +53,22 @@ test('year geometry', () => {
 test('roadmap text', () => {
   const t = roadmapText({ name: 'Kingdom', big_idea: 'Unshakable.' }, [parseSermon('---\ntitle: Two\ndate: 2026-10-18\nservice: Sunday morning preaching\npassage: Matthew 7:24-27\nbig_idea: Build on the rock.\n---\n'), parseSermon('---\ntitle: One\ndate: 2026-10-11\n---\n')]);
   assert.equal(t, 'Kingdom\nUnshakable.\n\n1. 2026-10-11 — One\n2. 2026-10-18, Sunday morning preaching — Two\n   Matthew 7:24-27\n   Build on the rock.\n');
+});
+
+test('schedule slots, span and CSV', () => {
+  const a = parseSermon('---\ntitle: Rock, "Paper"\ndate: 2026-10-18\nservice: Sunday morning preaching\npassage: Matthew 7:24-27\nstatus: ready\npreached: [2026-10-21 Wednesday]\n---\n'); a.dir = 'Kingdom';
+  const guests = [{ date: '2026-10-25', service: 'Sunday morning teaching', name: 'Guest One' }];
+  const slots = scheduleSlots([a], guests, SERVICES, '2026-10-18', '2026-10-31');
+  assert.equal(slots.length, 6);
+  assert.deepEqual(slots.map(s => s.entries.length), [0, 1, 1, 1, 0, 0]);
+  assert.equal(slots[1].date, '2026-10-18'); assert.equal(slots[2].date, '2026-10-21'); assert.equal(slots[2].entries[0].repeat, true);
+  assert.deepEqual(scheduleSpan([a], guests, '2026-10-16'), { from: '2026-10-11', to: '2027-01-03' });
+  assert.deepEqual(scheduleSpan([parseSermon('---\ntitle: Far\ndate: 2027-06-06\n---\n')], [], '2026-10-16'), { from: '2026-10-11', to: '2027-06-06' });
+  const csv = scheduleCsv(slots).split('\r\n');
+  assert.equal(csv[0], 'Week,Date,Service,Title,Collection,Passage,Status,Type');
+  assert.equal(csv[1], '2026-10-18,2026-10-18,Sunday morning teaching,,,,,');
+  assert.equal(csv[2], '2026-10-18,2026-10-18,Sunday morning preaching,"Rock, ""Paper""",Kingdom,Matthew 7:24-27,ready,Sermon');
+  assert.equal(csv[3], '2026-10-18,2026-10-21,Wednesday,"Rock, ""Paper""",Kingdom,Matthew 7:24-27,ready,Repeat');
+  assert.equal(csv[4], '2026-10-25,2026-10-25,Sunday morning teaching,Guest One,,,,Guest');
+  assert.equal(csv.at(-1), '');
 });
