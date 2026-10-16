@@ -3,6 +3,7 @@
 const { html } = SB.lib.html;
 const { useEffect, useRef } = React;
 const { useStore, setNotes, setSermonNotes, toggleNotes, setNotesTab } = SB.store;
+const { doPrintNotes } = SB.lib.print;
 const { MdEditor } = SB.ui.MdEditor;
 const { I } = SB.ui.Icons;
 const { mdLine, lineOf, linesOf, caretOffset, setCaret, replaceLine, caretTo } = SB.lib.md;
@@ -35,17 +36,19 @@ function listify(el, kind) {
 // The notepad: a tab on the right edge of every screen that slides a panel out. Two scratch pads — the open sermon's
 // (`<title>.notes.md` beside it) and the library's (`Notes.md` in the root) — chosen by outlined chips while a sermon is open.
 function Notepad() {
-  const { open, tab, screen, narrow, libNotes, sermon } = useStore(s => ({ open: s.notesOpen, tab: s.notesTab, screen: s.screen, narrow: s.narrow, libNotes: s.notes, sermon: s.openPath ? s.sermons.find(x => x.path === s.openPath) : null }));
+  const { open, tab, screen, narrow, libNotes, sermon, libName, settings } = useStore(s => ({ open: s.notesOpen, tab: s.notesTab, screen: s.screen, narrow: s.narrow, libNotes: s.notes, sermon: s.openPath ? s.sermons.find(x => x.path === s.openPath) : null, libName: s.libName, settings: s.settings }));
   const ed = useRef(null);
   const which = screen === 'sermon' && sermon ? tab : 'library';
   useEffect(() => { if (open && ed.current && !narrow) { ed.current.focus({ preventScroll: true }); caretTo(ed.current, 'end'); } }, [open, which]);
   const act = fn => e => { e.preventDefault(); if (ed.current) fn(ed.current); };
   const value = which === 'sermon' ? (sermon.notes || '') : libNotes, onChange = which === 'sermon' ? setSermonNotes : setNotes;
+  const print = () => doPrintNotes(which === 'sermon' ? sermon.meta.title : libName, value, settings, settings.pageNums);
   return html`<div className=${'np' + (open ? ' open' : '')} onKeyDown=${e => { if (e.key === 'Escape') { e.stopPropagation(); toggleNotes(false); } }}>
     <button className="np-tab" title="Notes" onClick=${() => toggleNotes()}><${I} name="pen" /></button>
     <div className="np-h">
       ${screen === 'sermon' && sermon ? html`<div className="views np-tabs"><button className=${which === 'sermon' ? 'on' : ''} onClick=${() => setNotesTab('sermon')}>Sermon</button><button className=${which === 'library' ? 'on' : ''} onClick=${() => setNotesTab('library')}>Library</button></div>` : html`<div className="views np-tabs"><button className="on">Library</button></div>`}
       <span style=${{ flex: 1 }} />
+      ${value.trim() ? html`<button className="ib quiet" title="Print" onClick=${print}><${I} name="printer" /></button>` : null}
       <button className="ib quiet" title="Close" onClick=${() => toggleNotes(false)}><${I} name="chevron-right" /></button>
     </div>
     <div className="np-f">

@@ -137,8 +137,9 @@ function PrintMenu() {
   const inCol = col ? sermons.filter(s => s.dir === col.name && !s.meta.template) : [];
   const go = sc => { set({ printMenu: false }); if (col) doPrintCollection(col, inCol, settings, sc, settings.pageNums); else { const s = sermonOf(openPath); if (s) doPrint(s, settings, sc, settings.pageNums); } };
   const copy = async () => { try { await navigator.clipboard.writeText(roadmapText(col, inCol, { fmtDate })); flash('Copied'); } catch (e) { flash('Could not copy'); } set({ printMenu: false }); };
-  const scopes = col ? ['roadmap', 'manuscript', 'outline'] : ['manuscript', 'outline', 'handout'];
-  const icon = sc => sc === 'manuscript' ? 'align' : sc === 'outline' ? 'layers' : sc === 'roadmap' ? 'calendar' : 'note';
+  const cur = col ? null : sermonOf(openPath);
+  const scopes = col ? ['roadmap', 'manuscript', 'outline'] : ['manuscript', 'outline', 'handout', ...(cur && (cur.notes || '').trim() ? ['notes'] : [])];
+  const icon = sc => sc === 'manuscript' ? 'align' : sc === 'outline' ? 'layers' : sc === 'roadmap' ? 'calendar' : sc === 'notes' ? 'pen' : 'note';
   return html`<${Scrim} onClose=${closeMenus}>
     <div className="status" style=${{ textAlign: 'center' }}>${col ? 'Print ' + col.name : 'Print'}</div>
     <div className="cards">

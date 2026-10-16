@@ -133,8 +133,17 @@ const SCHEDULE_CSS = '.sc{width:100%;border-collapse:collapse;font-size:.85em}.s
 function doPrintSchedule(libName, slots, from, to, settings, paged) {
   printDoc('Schedule' + (libName ? ' — ' + libName : ''), buildScheduleHtml(libName, slots, from, to), buildCss(settings, 'Schedule', !!paged) + SCHEDULE_CSS);
 }
+// Notes (a sermon's sidecar or the library's Notes.md): the pad's Markdown on Letter under a `Notes` title and a line saying whose.
+function buildNotesHtml(sub, notes) {
+  return '<div class="head"><div class="t">Notes</div>' + (sub ? '<div class="ml">' + esc(sub) + '</div>' : '') + '</div><div class="notes">' + mdHtml(notes || '') + '</div>';
+}
+const NOTES_CSS = '.notes .li{margin-bottom:.25em}';
+function doPrintNotes(sub, notes, settings, paged) {
+  printDoc('Notes' + (sub ? ' — ' + sub : ''), buildNotesHtml(sub, notes), buildCss(settings, 'Notes' + (sub ? ' — ' + sub : ''), !!paged) + NOTES_CSS);
+}
 function doPrint(sermon, settings, scope, paged) {
   const title = sermon.meta.title || 'Untitled', docTitle = title + (scope === 'manuscript' ? '' : ' — ' + scope[0].toUpperCase() + scope.slice(1));
+  if (scope === 'notes') return doPrintNotes(title, sermon.notes, settings, paged);
   const html = buildHtml(sermon, scope, settings.colors);
   const css = buildCss(settings, title, !!paged);
   printDoc(docTitle, html, css);
@@ -153,5 +162,5 @@ function printDoc(docTitle, html, css) {
   const ready = () => (d.fonts ? d.fonts.ready : Promise.resolve()).then(() => setTimeout(go, 50));
   d.readyState === 'complete' ? ready() : (f.onload = ready);
 }
-(SB.lib ||= {}).print = { fontFamily, pointNumbers, headingOf, metaLine, fmtDate, buildHtml, buildRoadmapHtml, buildCss, doPrint, doPrintCollection, buildScheduleHtml, doPrintSchedule };
+(SB.lib ||= {}).print = { fontFamily, pointNumbers, headingOf, metaLine, fmtDate, buildHtml, buildRoadmapHtml, buildCss, doPrint, buildNotesHtml, doPrintNotes, doPrintCollection, buildScheduleHtml, doPrintSchedule };
 })(globalThis.SB ||= {});
