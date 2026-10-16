@@ -39,7 +39,11 @@ Chrome has everything the app needs, dictation included.
 - **Print and export.** Manuscript, outline, or handout on Letter paper. Markdown and Word downloads. A verse-list PDF for the media team.
 - **Templates.** A starter set of sermon shapes (Three Point, Verse by Verse, Topical, Funeral, Wedding, and more). Edit them, add your own, or save any sermon as one.
 - **Dictation.** Speak into any block, through Chrome's speech engine.
+- **Planning.** Your weekly services (Sunday morning teaching, Sunday morning preaching, Wednesday, or whatever yours are) become the columns of a Schedule that runs weeks ahead, with a `+` on every open slot: a new sermon, a sermon preached again, or a guest speaker. A Status view is the pipeline from Idea to Done. A Year view draws your collections across the months, with pillars (themes that span months) above them. A Scripture view shows every book of the Bible with what you have preached from it.
 - **Calendar.** See your preaching dates by month and drag a sermon to a different day.
+- **Bible.** A reading screen for the whole KJV: search a reference or words, step through chapters, highlight verses, copy them, bookmark them with a note, or insert them into the sermon you came from.
+- **Bookmarks.** Mark a chapter or a few verses from the Bible, tag it, keep a note, and drop it into any sermon later as a scripture block.
+- **Roadmap.** Print a collection as a one-page roadmap for the worship and media team, or copy it as text.
 
 ## Get it
 
@@ -57,9 +61,9 @@ The first time you open the app it asks for a folder. That folder is your librar
 
 ```
 My Sermons/
-  sermon.json                  settings (font, colors, theme)
+  sermon.json                  settings (font, colors, theme) and the plan (services, guests, pillars)
   Psalms/                      a collection
-    collection.json            { "color": "#rrggbb" }
+    collection.json            { "color": "#rrggbb", "big_idea": "..." }
     The Good Shepherd.md       a sermon
   Advent 2026/
     ...
@@ -67,11 +71,13 @@ My Sermons/
     Three Point.md
   Illustrations/               illustration library (reserved)
     The lost lamb.md
+  Bookmarks/                   bookmarked passages (reserved)
+    John 10-11–14.md
 ```
 
 - Every sermon lives in a collection, which is just a subfolder with an optional color.
 - A sermon is one Markdown file. Rename the sermon and the file renames. Move it to another collection and the file moves.
-- `Templates/` and `Illustrations/` are reserved. The starter templates are written once into a library that has none, and after that they are yours.
+- `Templates/`, `Illustrations/` and `Bookmarks/` are reserved. The starter templates are written once into a library that has none, and after that they are yours.
 - `Log out` in Settings is the only thing that makes the app forget the folder.
 - A [Writer](https://github.com/testamenthouse/minimalist-writer) library is refused untouched. Pick one by mistake and the app links you to Writer instead of writing anything into it.
 
@@ -84,11 +90,13 @@ Open `samples/Library` to see a small library with a sermon, a template, and an 
 title: The Good Shepherd
 collection: Psalms
 date: 2026-10-11
+service: Sunday morning preaching
 passage: Psalm 23
 big_idea: God's care is personal, present and permanent.
-status: ready            # draft | ready | done
+status: ready            # idea | draft | ready | done
 tags: [comfort, trust]
 length: 35               # target minutes for the Podium clock
+preached: [2027-03-07 Wednesday]   # preached again: date and service
 ---
 
 ::: intro
@@ -117,11 +125,11 @@ Each block is a `::: kind Heading` fence. Scripture bodies are written out in fu
 1. **New collection** with `+` in the library, then **New sermon** from the collection's own `+`. Pick a template or start blank. Nothing is created until you give it a name.
 2. **Add blocks** with the `+` that appears between blocks, or type `/` on an empty block to pick a kind. The outline on the left tracks every block. Drag rows to reorder, or use the block's `…` menu.
 3. **Scripture.** Type a reference in a scripture block's heading and press Enter. The KJV text fills in. Change the reference and the text refills.
-4. **Bible pane** (`⌘B`) for lookup and keyword search. Click verses to select a range, then Insert or Copy.
+4. **Bible pane** (`⌘B`) for lookup and keyword search. Click verses to select a range, then Insert or Copy. The expand icon opens the full Bible screen on the same passage.
 5. **Illustrations pane** (`⌘I`) to search your library and insert one. Any illustration block can be saved back to the library.
 6. **Everything autosaves** less than a second after you stop typing. `⌘S` forces it. The status line shows `Saved h:mm`.
 
-The sermon settings (gear) hold the collection, date, passage, status, tags, and target length. `Save as template` and `Delete sermon` are there too.
+The sermon settings (gear) hold the collection, date, service, passage, status, tags, target length, and the dates it was preached again. `Duplicate sermon`, `Save as template` and `Delete sermon` are there too.
 
 ## Preaching from it
 

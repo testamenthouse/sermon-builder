@@ -15,7 +15,7 @@ const P = {
   align: 'M17 10H3M21 6H3M21 14H3M17 18H3', hands: 'M12 22s-5-4-5-9V7l5-3 5 3v6c0 5-5 9-5 9zM12 4v18', calendar: 'M19 4H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2V6a2 2 0 00-2-2zM16 2v4M8 2v4M3 10h18', layers: 'M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5',
   grid: 'M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z', list: 'M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01',
   mic: 'M12 2a3 3 0 00-3 3v7a3 3 0 006 0V5a3 3 0 00-3-3zM19 10v2a7 7 0 01-14 0v-2M12 19v3',
-  moon: 'M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z', type: 'M4 7V4h16v3M9 20h6M12 4v16', up: 'M12 19V5M5 12l7-7 7 7', down: 'M12 5v14M19 12l-7 7-7-7'
+  expand: 'M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7', moon: 'M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z', type: 'M4 7V4h16v3M9 20h6M12 4v16', up: 'M12 19V5M5 12l7-7 7 7', down: 'M12 5v14M19 12l-7 7-7-7'
 };
 function I({ name, size = 16, ...rest }) {
   return html`<svg width=${size} height=${size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" ...${rest}><path d=${P[name] || P.box} /></svg>`;

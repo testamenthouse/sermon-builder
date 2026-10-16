@@ -116,6 +116,16 @@ function search(bible, query, { books = null, limit = 200 } = {}) {
   }
   return out;
 }
+// The reference for a set of verses: consecutive verses join into one range, gaps become commas ("Acts 1:3, 5–7").
+function versesRef(vs) {
+  const list = [...vs].sort((a, b) => a.book - b.book || a.chapter - b.chapter || a.verse - b.verse), refs = [];
+  for (const v of list) {
+    const r = refs[refs.length - 1];
+    if (r && r.book === v.book && r.c2 === v.chapter && r.v2 === v.verse - 1) r.v2 = v.verse;
+    else refs.push({ book: v.book, c1: v.chapter, v1: v.verse, c2: v.chapter, v2: v.verse });
+  }
+  return formatRef({ refs });
+}
 function refLabel(book, chapter, verse) { return formatRef({ refs: [{ book, c1: chapter, v1: verse || 0, c2: chapter, v2: verse || 0 }] }); }
 
 // Find scripture references inside prose: [{ index, length, text, parsed }]. Used to make references tappable in Podium.
@@ -130,5 +140,5 @@ function findRefs(text) {
   }
   return out;
 }
-(SB.shared ||= {}).bible = { BOOKS, bookIndex, parseRef, formatRef, verses, lookup, passageText, search, refLabel, findRefs };
+(SB.shared ||= {}).bible = { BOOKS, bookIndex, parseRef, formatRef, verses, lookup, passageText, search, refLabel, versesRef, findRefs };
 })(globalThis.SB ||= {});

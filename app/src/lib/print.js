@@ -9,7 +9,7 @@ const fontFamily = f => fonts[f] || fonts.sans;
 
 const { pointNumbers, outlineTree } = SB.shared.outline;
 function headingOf(b) { return (b.heading || '').trim() || (b.body || '').split('\n').find(l => l.trim()) || ''; }
-function metaLine(meta) { return [meta.collection, meta.date ? fmtDate(meta.date) : '', meta.passage].filter(Boolean).join(' · '); }
+function metaLine(meta) { return [meta.collection, meta.date ? fmtDate(meta.date) : '', meta.service, meta.passage].filter(Boolean).join(' · '); }
 function fmtDate(d) { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(d || ''); if (!m) return d || ''; return new Date(+m[1], +m[2] - 1, +m[3]).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }); }
 
 // scope: 'manuscript' | 'outline' | 'handout'
@@ -95,10 +95,28 @@ function buildCss(settings, title, paged) {
     ? base + '@page{margin:25mm;@top-center{content:"' + String(title).replace(/[\\"]/g, '\\$&') + '";font-family:' + ff + ';font-size:9pt;color:#000;vertical-align:bottom;padding-bottom:10mm}@bottom-center{content:counter(page);font-family:' + ff + ';font-size:9pt;color:#000;vertical-align:top;padding-top:10mm}}'
     : base + '@page{margin:25mm}';
 }
+// Roadmap: the collection's name and big idea, then one row per sermon in date order — part number, date and service, title, passage, big idea.
+function buildRoadmapHtml(col, sermons) {
+  const list = [...sermons].sort((a, b) => (a.meta.date || '9999').localeCompare(b.meta.date || '9999') || a.meta.title.localeCompare(b.meta.title));
+  const head = '<div class="head"><div class="t">' + esc(col.name) + '</div>' + (col.big_idea ? '<div class="bi">' + esc(col.big_idea) + '</div>' : '') + '</div>';
+  const rows = list.map((s, i) => { const m = s.meta; return '<div class="rm"><div class="rn">' + (i + 1) + '</div><div class="rd">' + esc(m.date ? fmtDate(m.date) : '') + (m.service ? '<br>' + esc(m.service) : '') + '</div><div class="rt"><div class="rh">' + esc(m.title) + '</div>' + (m.passage ? '<div class="rp">' + esc(m.passage) + '</div>' : '') + (m.big_idea ? '<div class="rb">' + esc(m.big_idea) + '</div>' : '') + '</div></div>'; }).join('');
+  return '<div class="ro">' + head + rows + '</div>';
+}
+const ROADMAP_CSS = '.rm{display:grid;grid-template-columns:8mm 34mm minmax(0,1fr);column-gap:5mm;padding:3mm 0;border-bottom:1px solid #d4d4d0;break-inside:avoid}.rn{color:#8a8a86;font-variant-numeric:tabular-nums;padding-top:.15em}.rd{font-size:.85em;color:#5a5a58;line-height:1.5;padding-top:.25em}.rh{font-weight:700;font-size:1.15em;line-height:1.3}.rp{color:#333;margin-top:.5mm}.rb{font-style:italic;color:#555;margin-top:.5mm}';
+function doPrintCollection(col, sermons, settings, scope, paged) {
+  const list = [...sermons].sort((a, b) => (a.meta.date || '9999').localeCompare(b.meta.date || '9999') || a.meta.title.localeCompare(b.meta.title));
+  const title = col.name, docTitle = title + ' — ' + scope[0].toUpperCase() + scope.slice(1);
+  const html = scope === 'roadmap' ? buildRoadmapHtml(col, list) : list.map(s => '<div class="sheet">' + buildHtml(s, scope, settings.colors) + '</div>').join('');
+  const css = buildCss(settings, title, !!paged) + ROADMAP_CSS + '.sheet{break-after:page}.sheet:last-child{break-after:auto}';
+  printDoc(docTitle, html, css);
+}
 function doPrint(sermon, settings, scope, paged) {
   const title = sermon.meta.title || 'Untitled', docTitle = title + (scope === 'manuscript' ? '' : ' — ' + scope[0].toUpperCase() + scope.slice(1));
   const html = buildHtml(sermon, scope, settings.colors);
   const css = buildCss(settings, title, !!paged);
+  printDoc(docTitle, html, css);
+}
+function printDoc(docTitle, html, css) {
   const old = document.getElementById('sb-pf'); if (old) old.remove();
   const f = document.createElement('iframe'); f.id = 'sb-pf'; f.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden';
   document.body.appendChild(f);
@@ -112,5 +130,5 @@ function doPrint(sermon, settings, scope, paged) {
   const ready = () => (d.fonts ? d.fonts.ready : Promise.resolve()).then(() => setTimeout(go, 50));
   d.readyState === 'complete' ? ready() : (f.onload = ready);
 }
-(SB.lib ||= {}).print = { fontFamily, pointNumbers, headingOf, metaLine, fmtDate, buildHtml, buildCss, doPrint };
+(SB.lib ||= {}).print = { fontFamily, pointNumbers, headingOf, metaLine, fmtDate, buildHtml, buildRoadmapHtml, buildCss, doPrint, doPrintCollection };
 })(globalThis.SB ||= {});

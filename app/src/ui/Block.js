@@ -2,7 +2,7 @@
 'use strict';
 const { html } = SB.lib.html;
 const { useEffect, useLayoutEffect, useRef, useState } = React;
-const { useStore, set, setBlock, setKind, removeBlock, moveBlock, duplicateBlock, toggleFlag, fillScripture, setReference, insertBlock, createIllustration, flash, touch, open, toggleIll } = SB.store;
+const { useStore, set, setBlock, setKind, removeBlock, moveBlock, duplicateBlock, toggleFlag, fillScripture, setReference, insertBlock, createIllustration, flash, touch, open, toggleIll, toggleBible } = SB.store;
 const { KINDS, KIND, kindLabel, kindColor } = SB.shared.blocks;
 const { moveStep, canInsert, canSwitch } = SB.shared.outline;
 const { MdEditor } = SB.ui.MdEditor;
@@ -20,7 +20,7 @@ function Gap({ index, end }) {
   const allow = k => { const s = open(); return !s || canInsert(s.blocks, index, k); }; // inside a container: no point, transition or closing kind
   return html`<div className=${'gap' + (end ? ' end' : '')}>
     <button className=${'plus' + (on ? ' on' : '')} onClick=${e => { e.stopPropagation(); set({ kindMenu: on ? null : { mode: 'insert', index } }); }}><${I} name="plus" size=${12} /></button>
-    ${on && html`<${KindMenu} onPick=${k => insertBlock(index, k)} onIll=${() => { insertBlock(index, 'illustration'); toggleIll(true); }} align="center" allow=${allow} />`}
+    ${on && html`<${KindMenu} onPick=${k => insertBlock(index, k)} onIll=${() => { insertBlock(index, 'illustration'); toggleIll(true); }} onBm=${() => { insertBlock(index, 'scripture'); toggleBible(true, 'bookmarks'); }} align="center" allow=${allow} />`}
   </div>`;
 }
 
@@ -28,7 +28,7 @@ function Gap({ index, end }) {
 // grows the document or scrolls the sermon; it flips above the anchor when the
 // viewport has more room there and scrolls inside itself when the list is taller.
 const PAD = 8, GAP = 4;
-function KindMenu({ onPick, onIll, align = 'left', current, allow = () => true }) {
+function KindMenu({ onPick, onIll, onBm, align = 'left', current, allow = () => true }) {
   const [q, setQ] = useState(''); const [pos, setPos] = useState(null); const ref = useRef(null), inp = useRef(null);
   useEffect(() => { if (pos && inp.current) inp.current.focus({ preventScroll: true }); }, [!!pos]); // only once placed: a visibility:hidden input refuses focus
   useEffect(() => { const h = e => { if (ref.current && !ref.current.contains(e.target)) set({ kindMenu: null }); }; document.addEventListener('pointerdown', h, true); return () => document.removeEventListener('pointerdown', h, true); }, []);
@@ -50,7 +50,7 @@ function KindMenu({ onPick, onIll, align = 'left', current, allow = () => true }
   return html`<div ref=${ref} className="pop fixed" style=${pos || { visibility: 'hidden', top: 0, left: 0 }} onClick=${e => e.stopPropagation()}>
     <input ref=${inp} placeholder="Kind" value=${q} onChange=${e => setQ(e.target.value)} onKeyDown=${onKey} />
     ${list.map(k => html`<button key=${k.kind} className=${current === k.kind ? 'on' : ''} onMouseDown=${e => e.preventDefault()} onClick=${() => onPick(k.kind)}>${k.label}</button>`)}
-    ${onIll && !q && html`<><div className="hair" /><button onMouseDown=${e => e.preventDefault()} onClick=${onIll}>Illustrations…</button></>`}
+    ${onIll && !q && html`<><div className="hair" /><button onMouseDown=${e => e.preventDefault()} onClick=${onIll}>Illustrations…</button>${onBm && html`<button onMouseDown=${e => e.preventDefault()} onClick=${onBm}>Bookmarks…</button>`}</>`}
   </div>`;
 }
 

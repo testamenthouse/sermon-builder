@@ -46,3 +46,10 @@ test('inline refs', () => {
   const r = findRefs('See John 3:16-18 and Ps. 23, then 1 Cor 13:4 and nothing in Bob 4.');
   assert.deepEqual(r.map(x => x.text), ['John 3:16-18', 'Ps. 23', '1 Cor 13:4']);
 });
+test('a set of verses reads as runs', () => {
+  const v = (c, n) => ({ book: 43, chapter: c, verse: n, text: '' });
+  assert.equal(B.versesRef([v(1, 3), v(1, 5), v(1, 7), v(1, 1)]), 'Acts 1:1, 3, 5, 7');
+  assert.equal(B.versesRef([v(1, 3), v(1, 4), v(1, 5), v(1, 8)]), 'Acts 1:3–5, 8');
+  assert.equal(B.versesRef([v(1, 26), v(2, 1)]), 'Acts 1:26; 2:1');
+  assert.deepEqual(B.verses(kjv, B.parseRef('Acts 1:1, 3, 5, 7')).map(x => x.verse), [1, 3, 5, 7]);
+});

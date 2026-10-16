@@ -1,3 +1,29 @@
 {
-  "settings": { "font": "sans", "size": 18, "theme": "system", "wpm": 130, "length": 35, "podium": 28 }
+  "settings": {
+    "font": "sans",
+    "size": 18,
+    "theme": "system",
+    "podium": 28
+  },
+  "plan": {
+    "services": [
+      {
+        "name": "Sunday morning teaching",
+        "day": 0,
+        "time": "10:00"
+      },
+      {
+        "name": "Sunday morning preaching",
+        "day": 0,
+        "time": "11:00"
+      },
+      {
+        "name": "Wednesday",
+        "day": 3,
+        "time": "19:00"
+      }
+    ],
+    "guests": [],
+    "pillars": []
+  }
 }

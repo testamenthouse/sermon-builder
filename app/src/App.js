@@ -8,9 +8,11 @@ const { supported } = SB.lib.dictation;
 const { Library } = SB.ui.Library;
 const { Sermon } = SB.ui.Sermon;
 const { Illustrations } = SB.ui.Illustrations;
+const { Bookmarks } = SB.ui.Bookmarks;
+const { Bible } = SB.ui.Bible;
 const { Templates } = SB.ui.Templates;
 const { Podium } = SB.ui.Podium;
-const { Confirm, SermonModal, CollectionModal, PrintMenu, Settings, NameDialog, KindColors, Alert, DictationBar, DictationStop } = SB.ui.Overlays;
+const { Confirm, SermonModal, CollectionModal, PrintMenu, Settings, ServicesDialog, GuestModal, PillarModal, RepeatPick, BookmarkModal, SlotMenu, NameDialog, KindColors, Alert, DictationBar, DictationStop } = SB.ui.Overlays;
 
 function App() {
   const { booting, folderOpen, screen, podium } = useStore(s => ({ booting: s.booting, folderOpen: s.folderOpen, screen: s.screen, podium: s.podium }));
@@ -20,7 +22,7 @@ function App() {
     const onKey = e => {
       const s = get(); if (!s.folderOpen) return;
       const mod = e.metaKey || e.ctrlKey;
-      if (e.key === 'Escape') { if (s.podium) return; if (s.alert) set({ alert: null }); else if (s.confirm) set({ confirm: null }); else if (s.kindMenu) set({ kindMenu: null }); else if (s.findOpen) set({ findOpen: false }); else if ((s.screen === 'library' || s.screen === 'templates') && (s.libFindOpen || s.libQuery)) closeLibFind(); else closeMenus(); return; }
+      if (e.key === 'Escape') { if (s.podium) return; if (s.alert) set({ alert: null }); else if (s.confirm) set({ confirm: null }); else if (s.kindMenu) set({ kindMenu: null }); else if (s.slotMenu) set({ slotMenu: null }); else if (s.findOpen) set({ findOpen: false }); else if ((s.screen === 'library' || s.screen === 'templates') && (s.libFindOpen || s.libQuery)) closeLibFind(); else closeMenus(); return; }
       if (mod && e.key.toLowerCase() === 's') { e.preventDefault(); saveNow(); }
       if ((s.screen === 'library' || s.screen === 'templates') && mod && e.key.toLowerCase() === 'f') { e.preventDefault(); set({ libFindOpen: true }); }
       if (s.screen !== 'sermon' || s.podium) return;
@@ -36,10 +38,10 @@ function App() {
   if (booting) return null;
   if (!folderOpen) return html`<${Gate} />`;
   return html`<>
-    ${screen === 'sermon' ? html`<${Sermon} />` : screen === 'illustrations' ? html`<${Illustrations} />` : screen === 'templates' ? html`<${Templates} />` : html`<${Library} />`}
+    ${screen === 'sermon' ? html`<${Sermon} />` : screen === 'illustrations' ? html`<${Illustrations} />` : screen === 'bookmarks' ? html`<${Bookmarks} />` : screen === 'bible' ? html`<${Bible} />` : screen === 'templates' ? html`<${Templates} />` : html`<${Library} />`}
     ${podium && html`<${Podium} />`}
     ${!podium && (screen === 'library' || screen === 'templates') && html`<><${GitHubLink} /><${CrossLink} /></>`}
-    <${SermonModal} /><${CollectionModal} /><${PrintMenu} /><${Settings} /><${KindColors} /><${NameDialog} /><${Confirm} /><${Alert} /><${DictationBar} /><${DictationStop} />
+    <${SermonModal} /><${CollectionModal} /><${PrintMenu} /><${Settings} /><${ServicesDialog} /><${GuestModal} /><${PillarModal} /><${RepeatPick} /><${BookmarkModal} /><${SlotMenu} /><${KindColors} /><${NameDialog} /><${Confirm} /><${Alert} /><${DictationBar} /><${DictationStop} />
   </>`;
 }
 SB.app = { App };

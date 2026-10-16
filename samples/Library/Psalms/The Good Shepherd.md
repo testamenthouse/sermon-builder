@@ -2,6 +2,7 @@
 title: The Good Shepherd
 collection: Psalms
 date: 2026-10-11
+service: Sunday morning preaching
 passage: Psalm 23
 big_idea: God's care is personal, present and permanent.
 status: draft

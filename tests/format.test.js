@@ -78,3 +78,12 @@ test('custom block: label | headline', () => {
   assert.deepEqual(parseSermon(out).blocks.map(b => [b.label, b.heading]), s.blocks.map(b => [b.label, b.heading]));
   assert.equal(sermonWords(s.blocks), 9);
 });
+test('service and preached round-trip; idea is a status', () => {
+  const src = '---\ntitle: Again\ndate: 2026-01-04\nservice: Wednesday\nstatus: idea\npreached: [2026-06-07 Sunday morning preaching, 2026-03-01]\n---\n';
+  const s = parseSermon(src);
+  assert.equal(s.meta.service, 'Wednesday'); assert.equal(s.meta.status, 'idea');
+  assert.deepEqual(s.meta.preached, ['2026-03-01', '2026-06-07 Sunday morning preaching']); // sorted, deduped
+  assert.equal(serializeSermon(s), '---\ntitle: Again\ndate: 2026-01-04\nservice: Wednesday\nstatus: idea\npreached: [2026-03-01, 2026-06-07 Sunday morning preaching]\n---\n');
+  assert.deepEqual(parseSermon('---\npreached: [soon, 2026-13-01x]\n---\n').meta.preached, []);
+  assert.doesNotMatch(serializeSermon(parseSermon('---\ntitle: Plain\n---\n')), /service|preached/);
+});

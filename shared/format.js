@@ -3,8 +3,9 @@
 'use strict';
 const { isKind, FLAGS } = SB.shared.blocks;
 
-const META_KEYS = ['title', 'collection', 'date', 'passage', 'big_idea', 'status', 'tags', 'length', 'template'];
-const STATUSES = ['draft', 'ready', 'done']; // 'preached' in old files reads as 'done'
+const META_KEYS = ['title', 'collection', 'date', 'service', 'passage', 'big_idea', 'status', 'tags', 'length', 'preached', 'template'];
+const STATUSES = ['idea', 'draft', 'ready', 'done']; // 'preached' in old files reads as 'done'
+const PREACHED = /^\d{4}-\d{2}-\d{2}(\s+\S.*)?$/; // `preached:` entries: a date, optionally followed by the service name
 
 let seq = 0;
 const newId = () => 'b' + Date.now().toString(36) + (seq++).toString(36);
@@ -68,10 +69,11 @@ function parseSermon(src) {
 function mk(kind, heading, body, flags, label = '') { return { id: newId(), kind, heading, body, flags: [...new Set(flags)].filter(f => FLAGS.includes(f)), label: kind === 'custom' ? label : '' }; }
 
 function normalizeMeta(m) {
-  const out = { title: String(m.title ?? '').trim(), collection: String(m.collection ?? m.series ?? '').trim(), date: String(m.date ?? '').trim(), passage: String(m.passage ?? '').trim(),
+  const list = v => Array.isArray(v) ? v.map(String) : typeof v === 'string' && v ? v.split(',').map(s => s.trim()).filter(Boolean) : [];
+  const out = { title: String(m.title ?? '').trim(), collection: String(m.collection ?? m.series ?? '').trim(), date: String(m.date ?? '').trim(), service: String(m.service ?? '').trim(), passage: String(m.passage ?? '').trim(),
     big_idea: String(m.big_idea ?? m.bigIdea ?? '').trim(), status: m.status === 'preached' ? 'done' : STATUSES.includes(m.status) ? m.status : 'draft',
-    tags: Array.isArray(m.tags) ? m.tags.map(String) : typeof m.tags === 'string' && m.tags ? m.tags.split(',').map(s => s.trim()).filter(Boolean) : [],
-    length: Number.isFinite(+m.length) && +m.length > 0 ? Math.round(+m.length) : 0, template: m.template === true };
+    tags: list(m.tags), length: Number.isFinite(+m.length) && +m.length > 0 ? Math.round(+m.length) : 0,
+    preached: [...new Set(list(m.preached).map(s => s.trim().replace(/\s+/g, ' ')).filter(s => PREACHED.test(s)))].sort(), template: m.template === true };
   if (!/^\d{4}-\d{2}-\d{2}$/.test(out.date)) out.date = '';
   for (const k of Object.keys(m)) if (!(k in out) && k !== 'bigIdea' && k !== 'series') out[k] = m[k];
   return out;
@@ -83,7 +85,7 @@ function serializeSermon({ meta, blocks }) {
   for (const k of META_KEYS) {
     const v = m[k];
     if (k === 'template') { if (v) lines.push('template: true'); continue; }
-    if (k === 'tags') { if (v.length) lines.push('tags: ' + fmtValue(v)); continue; }
+    if (k === 'tags' || k === 'preached') { if (v.length) lines.push(k + ': ' + fmtValue(v)); continue; }
     if (k === 'length') { if (v) lines.push('length: ' + v); continue; }
     if (k === 'status') { lines.push('status: ' + v); continue; }
     if (v !== '' && v != null) lines.push(k + ': ' + fmtValue(v));
