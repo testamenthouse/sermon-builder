@@ -452,10 +452,13 @@ input,textarea,select{font:inherit;color:inherit;background:none}
 .yr-l{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;padding:4px 0;min-height:26px}
 .yr-l:hover{color:var(--fg)}
 .yr-l.pillar{font-weight:500;color:var(--fg)}
-.yr-l.hair,.yr-track.hair{min-height:0;height:1px;background:var(--line);padding:0;cursor:default}
 .yr-track{position:relative;height:26px;background-image:linear-gradient(to right,var(--line) 1px,transparent 1px);background-size:calc(100% / 12) 100%}
 .yr-bar{position:absolute;top:9px;height:8px;border-radius:4px;cursor:pointer;opacity:.9}
-.yr-bar.pillar{top:6px;height:14px;border-radius:5px}
+/* pillars: the band above the months, names inside the bars, overlapping pillars in lanes */
+.yr-l.cap{align-self:start;padding-top:5px;cursor:default}
+.yr-pillars{position:relative;margin-bottom:10px;background-image:linear-gradient(to right,var(--line) 1px,transparent 1px);background-size:calc(100% / 12) 100%}
+.yr-pbar{position:absolute;height:24px;line-height:24px;border-radius:6px;padding:0 10px;font-size:12px;font-weight:500;color:var(--fg);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;box-sizing:border-box}
+.yr-pbar:hover{outline:1px solid var(--fg)}
 .yr-bar:hover{opacity:1;outline:1px solid var(--fg)}
 .yr-tick{position:absolute;top:5px;width:2px;height:16px;margin-left:-1px;background:var(--fg);border-radius:1px;opacity:.7;pointer-events:none}
 .yr-now{position:absolute;top:-3px;bottom:-3px;width:1px;background:var(--fg);opacity:.5;pointer-events:none}

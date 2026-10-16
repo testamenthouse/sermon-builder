@@ -152,15 +152,18 @@ function Month({ sermons, guests, services, pillars, colorOf, ym, setYm }) {
   </div>`;
 }
 
-// The year as twelve columns: pillars as bars across their months, then each collection as a bar from its first
-// sermon to its last with a tick per date. Today is a hairline. A month name opens that month.
+// The year as twelve columns. Pillars are the higher construct: a band of their own above the months, each a bar
+// carrying its name across the months it spans (overlapping pillars stack into lanes). Beneath the month strip, one
+// row per collection as a bar from its first sermon to its last with a tick per date. Today is a hairline.
 function Year({ sermons, collections, pillars, colorOf, year, setYear, onMonth }) {
   const t = ymd(new Date()), months = []; for (let i = 0; i < 12; i++) months.push(new Date(year, i, 1).toLocaleDateString([], { month: 'short' }));
   const pct = f => (f * 100).toFixed(2) + '%';
   const todayFrac = +t.slice(0, 4) === year ? (new Date(year, +t.slice(5, 7) - 1, +t.slice(8, 10)) - new Date(year, 0, 1)) / (new Date(year + 1, 0, 1) - new Date(year, 0, 1)) : null;
-  const prow = pillars.map((p, i) => { const sp = pillarSpan(p, year); return sp && { p, i, sp }; }).filter(Boolean);
+  const lanes = [], prow = [];
+  for (const [i, p] of pillars.entries()) { const sp = pillarSpan(p, year); if (!sp) continue; let lane = lanes.findIndex(end => end <= sp[0]); if (lane < 0) { lane = lanes.length; lanes.push(0); } lanes[lane] = sp[1]; prow.push({ p, i, sp, lane }); }
   const crow = collections.map(c => ({ c, sp: collectionSpan(sermons.filter(s => s.dir === c.name), year) })).filter(x => x.sp);
-  const track = (children, k) => html`<div key=${k} className="yr-track">${todayFrac !== null && html`<span className="yr-now" style=${{ left: pct(todayFrac) }} />`}${children}</div>`;
+  const now = todayFrac !== null && html`<span className="yr-now" style=${{ left: pct(todayFrac) }} />`;
+  const track = (children, k) => html`<div key=${k} className="yr-track">${now}${children}</div>`;
   return html`<div className="yr">
     <div className="cal-h">
       <h2>${year}</h2>
@@ -171,18 +174,15 @@ function Year({ sermons, collections, pillars, colorOf, year, setYear, onMonth }
       <button className="ib quiet" title="New pillar" onClick=${() => set({ pillarModal: { create: true, from: year + '-' + pad(+t.slice(5, 7)), to: year + '-' + pad(+t.slice(5, 7)) } })}><${I} name="plus" size=${14} /></button>
     </div>
     <div className="yr-g">
+      ${prow.length > 0 && html`<><div className="yr-l cap">Pillars</div>
+        <div className="yr-pillars" style=${{ height: lanes.length * 30 - 6 }}>${now}${prow.map(({ p, i, sp, lane }) => html`<div key=${i} className="yr-pbar" style=${{ left: pct(sp[0]), width: pct(sp[1] - sp[0]), top: lane * 30, background: p.color || 'var(--fill)' }} title=${p.name} onClick=${() => set({ pillarModal: { index: i } })}>${p.name}</div>`)}</div></>`}
       <div className="yr-l" />
       <div className="yr-months">${months.map((mn, i) => html`<button key=${i} className=${'cap' + (year + '-' + pad(i + 1) === t.slice(0, 7) ? ' now' : '')} onClick=${() => onMonth(year + '-' + pad(i + 1))}>${mn}</button>`)}</div>
-      ${prow.map(({ p, i, sp }) => html`<${Fragment} key=${'p' + i}>
-        <div className="yr-l pillar" onClick=${() => set({ pillarModal: { index: i } })}><span className="tile sm" style=${p.color ? { background: p.color } : undefined} />${p.name}</div>
-        ${track(html`<div className="yr-bar pillar" style=${{ left: pct(sp[0]), width: pct(sp[1] - sp[0]), background: p.color || 'var(--line)' }} onClick=${() => set({ pillarModal: { index: i } })} />`, 't' + i)}
-      <//>`)}
-      ${prow.length > 0 && crow.length > 0 && html`<><div className="yr-l hair" /><div className="yr-track hair" /></>`}
       ${crow.map(({ c, sp }) => html`<${Fragment} key=${'c' + c.name}>
         <div className="yr-l" onClick=${() => set({ collectionModal: { name: c.name } })}><span className="tile sm" style=${c.color ? { background: c.color } : undefined} />${c.name}</div>
         ${track(html`<><div className="yr-bar" style=${{ left: pct(sp.from), width: 'max(3px,' + pct(Math.max(0, sp.to - sp.from)) + ')', background: c.color || 'var(--faint)' }} onClick=${() => set({ collectionModal: { name: c.name } })} />${sp.ticks.map((f, k) => html`<span key=${k} className="yr-tick" style=${{ left: pct(f) }} />`)}</>`, 'c' + c.name)}
       <//>`)}
-      ${!prow.length && !crow.length && html`<div className="yr-l" /><div className="yr-track" />`}
+      ${!crow.length && html`<><div className="yr-l" /><div className="yr-track" /></>`}
     </div>
   </div>`;
 }
