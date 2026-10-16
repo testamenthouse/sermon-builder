@@ -69,7 +69,8 @@ function buildHtml(sermon, scope, colors) {
   return '<div class="' + (scope === 'manuscript' ? 'ms' : scope === 'outline' ? 'ol' : 'ho') + '">' + head + body + '</div>';
 }
 function buildCss(settings, title, paged) {
-  const ff = fontFamily(settings.font), pt = Math.round(settings.size * 0.67);
+  const ff = fontFamily(settings.font), pt = Math.round(settings.size * 0.67), lh = (pt * 1.55).toFixed(2) + 'pt';
+  // Labels are chrome, not content: Inter at caption size whatever the content font, in a column wide enough to hold "Introduction" and free to wrap.
   const base = 'html,*{print-color-adjust:exact;-webkit-print-color-adjust:exact}body{margin:0}body{color:#000;background:#fff;font-family:' + ff + ';font-size:' + pt + 'pt;line-height:1.55;-webkit-print-color-adjust:exact}p{margin:0 0 .5em;white-space:pre-wrap;overflow-wrap:break-word}p:last-child{margin-bottom:0}' +
     // head
     '.t{font-weight:700;font-size:2.1em;letter-spacing:-.01em;line-height:1.1;margin:0 0 2mm}.ml{font-size:.8em;color:#5a5a58;margin:0 0 2mm}.bi{font-style:italic;font-size:1.05em;color:#333;margin:1mm 0 0}' +
@@ -78,14 +79,14 @@ function buildCss(settings, title, paged) {
     '.pg{break-inside:avoid;border:1px solid #d4d4d0;border-radius:3mm;padding:4mm 5mm 4mm}.ms-g{margin:0 0 7mm}.ms-g .b:last-child{margin-bottom:0}.ms-g .b.point{padding-top:0}.g.pg{border-bottom:1px solid #d4d4d0;padding-bottom:4mm}' +
     '.ph{grid-column:1/-1;display:flex;align-items:baseline;gap:3mm;font-size:1.5em;font-weight:700;line-height:1.2;margin:0 0 3mm;break-after:avoid}.ph .pn{color:#8a8a86;min-width:1.1em;font-variant-numeric:tabular-nums}.g .ph{margin-bottom:1mm}' +
     // manuscript (A): label column + text column, air between blocks
-    '.b{display:grid;grid-template-columns:22mm minmax(0,1fr);column-gap:5mm;margin:0 0 6mm;break-inside:avoid}.b.point{padding-top:4mm}' +
-    '.lb{text-align:right;color:#8a8a86;font-size:.8em;padding-top:.45em;line-height:1.45}.lb .num{font-size:1.9em;font-weight:700;color:inherit;line-height:1.1}' +
+    '.b{display:grid;grid-template-columns:30mm minmax(0,1fr);column-gap:6mm;margin:0 0 6mm;break-inside:avoid}.b.point{padding-top:4mm}' +
+    '.lb{text-align:right;color:#8a8a86;font-family:Inter,-apple-system,sans-serif;font-size:8.5pt;line-height:' + lh + ';overflow-wrap:anywhere;hyphens:auto}.lb .num{font-size:1.9em;font-weight:700;color:inherit;line-height:1.1}' +
     '.b .hd{font-weight:700;font-size:1.5em;line-height:1.2;margin:0 0 2.5mm;break-after:avoid}.lead{font-weight:700;margin:0 0 .5mm}' +
     '.vl{padding-left:1.5em;text-indent:-1.5em;margin-bottom:.3em}.vn{font-size:.6em;color:#8a8a86;margin-right:.35em;vertical-align:super;line-height:0}' +
     '.b.quote .bd{font-style:italic}.src{font-size:.85em;color:#555;margin-top:1mm}.b.note .bd{font-size:.85em;color:#555}.b.transition .bd{font-style:italic;color:#444}' +
     // outline (B): groups of label + line rows, a hairline closing each group
-    '.g{display:grid;grid-template-columns:27mm minmax(0,1fr);column-gap:6mm;row-gap:2.6mm;padding-bottom:6mm;margin-bottom:6mm;border-bottom:1px solid #c8c8c4;break-inside:avoid}.g:last-child{border-bottom:0}.g.tr{border-bottom:0;padding-bottom:0;margin-bottom:4mm}' +
-    '.g .lb{padding-top:.25em}.g .num{font-size:1.6em;font-weight:700;color:#8a8a86;line-height:1.2}.g .pt{font-size:1.35em;font-weight:700;line-height:1.25}' +
+    '.g{display:grid;grid-template-columns:30mm minmax(0,1fr);column-gap:6mm;row-gap:2.6mm;padding-bottom:6mm;margin-bottom:6mm;border-bottom:1px solid #c8c8c4;break-inside:avoid}.g:last-child{border-bottom:0}.g.tr{border-bottom:0;padding-bottom:0;margin-bottom:4mm}' +
+    '.g .lb{padding-top:0}.g .num{font-size:1.6em;font-weight:700;color:#8a8a86;line-height:1.2}.g .pt{font-size:1.35em;font-weight:700;line-height:1.25}' +
     '.g .sc{font-weight:700}.g .tr{font-style:italic;color:#444}.g .qt{font-style:italic}' +
     // handout
     '.hp{font-weight:600;margin:4mm 0 1mm}.hp .n{display:inline-block;min-width:1.2em}.hs{padding-left:1.2em;margin:0 0 1mm}.qh{font-weight:600;margin:6mm 0 2mm}.hq{margin:0 0 3mm}.ln{border-bottom:1px solid #000;height:7mm}' +

@@ -2,7 +2,7 @@
 'use strict';
 const { html } = SB.lib.html;
 const { useEffect, useRef, useState } = React;
-const { useStore, set, open, closeSermon, toggleRail, toggleBible, toggleIll, commitMeta, updateOpen, touch, moveBlockTo, removeBlock, deleteSermon, saveNow, flash, toggleFold, toggleDictation } = SB.store;
+const { useStore, set, open, closeSermon, toggleRail, toggleBible, toggleIll, commitMeta, updateOpen, touch, moveBlockTo, removeBlock, deleteSermon, saveNow, flash, toggleFold, toggleDictation, arriveAt } = SB.store;
 const { Block, Gap } = SB.ui.Block;
 const { BiblePane } = SB.ui.BiblePane;
 const { IllPane } = SB.ui.IllPane;
@@ -26,7 +26,7 @@ function Outline({ s, min }) {
   const kc = b => { const c = kindColor(b.kind, colors); return c ? { '--kc': c } : undefined; };
   const [dragging, setDragging] = useState(null); const [over, setOver] = useState(null); // over = the block index the dragged range would start at
   const idx = new Map(s.blocks.map((b, i) => [b.id, i]));
-  const go = b => { set({ curBlock: b.id, focusReq: { id: b.id, where: 'start' }, drawer: false }); const el = document.querySelector('[data-bid="' + b.id + '"]'); if (el) el.scrollIntoView({ block: 'center', behavior: 'smooth' }); };
+  const go = b => arriveAt(b.id);
   const clear = () => { dragId.current = null; setDragging(null); setOver(null); };
   const dnd = b => ({
     draggable: true,
@@ -64,11 +64,31 @@ function Outline({ s, min }) {
 // The block stack with points drawn as containers (left rule, number in the gutter) over their group. A "+" sits
 // before every block and at the end of each container; the file is flat, so a gap index is drawn once, inside
 // the container that reaches it.
-function Groups({ s, nums, curBlock }) {
+function Groups({ s, nums, curBlock, blocksRef }) {
   const pc = useStore(st => kindColor('point', st.settings.colors));
   const idx = new Map(s.blocks.map((b, i) => [b.id, i])), seen = new Set(), n = s.blocks.length;
+  // Drag by a block's caption row (a point carries its group). The whole stack is the drop zone: the pointer's height
+  // picks the nearest block boundary, the line snaps where the rail's would (shared/outline.js), and releasing anywhere
+  // in the stack — a gap, a group's padding, the line itself — drops there.
+  const dragId = useRef(null); const [dragging, setDragging] = useState(null); const [over, setOver] = useState(null);
+  const clear = () => { dragId.current = null; setDragging(null); setOver(null); };
+  const dnd = b => ({
+    // never a mousedown preventDefault on the handle: Chrome then refuses to start the drag
+    grip: { draggable: true, onDragStart: e => { if (e.target.isContentEditable) { e.preventDefault(); return; } dragId.current = b.id; e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', b.id); e.dataTransfer.setDragImage(e.currentTarget, 24, 14); setDragging(b.id); }, onDragEnd: clear },
+    box: {}
+  });
+  const stack = {
+    onDragOver: e => { const id = dragId.current; if (!id) return; e.preventDefault(); e.dataTransfer.dropEffect = 'move';
+      let raw = n; for (const el of e.currentTarget.querySelectorAll('.blk')) { const r = el.getBoundingClientRect(); if (e.clientY < r.top + r.height / 2) { raw = idx.get(el.dataset.bid); break; } }
+      const t = snapDrop(s.blocks, id, raw); if (t !== over) setOver(t); },
+    onDragLeave: e => { if (!e.currentTarget.contains(e.relatedTarget)) setOver(null); },
+    onDrop: e => { e.preventDefault(); const id = dragId.current, t = over; clear(); if (id && t !== null && t !== undefined) moveBlockTo(id, t); }
+  };
+  const lineBefore = over !== null && over !== undefined ? s.blocks.find((b, i) => i >= over) : null, lineAfter = over !== null && over !== undefined && !lineBefore ? s.blocks[n - 1] : null;
+  const dropCls = b => lineBefore && lineBefore.id === b.id ? ' drop-before' : lineAfter && lineAfter.id === b.id ? ' drop-after' : '';
+  const inDrag = b => dragging ? (() => { const r = groupRange(s.blocks, dragging); return !!r && idx.get(b.id) >= r[0] && idx.get(b.id) < r[1]; })() : false;
   const gap = i => { if (seen.has(i)) return null; seen.add(i); return html`<${Gap} key=${'g' + i} index=${i} end=${i === n} />`; };
-  const blk = b => html`<${Block} key=${b.id} b=${b} index=${idx.get(b.id)} count=${n} num=${nums.get(b.id)} cur=${b.id === curBlock} />`;
+  const blk = b => html`<${Block} key=${b.id} b=${b} index=${idx.get(b.id)} count=${n} num=${nums.get(b.id)} cur=${b.id === curBlock} dnd=${dnd(b)} dropCls=${dropCls(b)} dragging=${inDrag(b)} />`;
   const out = [];
   for (const sec of outlineTree(s.blocks)) {
     if (sec.type === 'transition') { out.push(gap(idx.get(sec.block.id)), blk(sec.block)); continue; }
@@ -76,10 +96,10 @@ function Groups({ s, nums, curBlock }) {
     const p = sec.block, [, ge] = groupRange(s.blocks, p.id), inner = [];
     out.push(gap(idx.get(p.id)));
     for (const b of sec.blocks) inner.push(gap(idx.get(b.id)), blk(b));
-    out.push(html`<div key=${p.id} className=${'pgroup' + (p.id === curBlock ? ' cur' : '')} style=${pc ? { '--kc': pc } : undefined}>${blk(p)}<div className="gin">${inner}</div></div>`, gap(ge));
+    out.push(html`<div key=${p.id} className=${'pgroup' + (p.id === curBlock ? ' cur' : '') + (p.id === dragging ? ' dragging' : '')} style=${pc ? { '--kc': pc } : undefined}>${blk(p)}<div className="gin">${inner}</div></div>`, gap(ge));
   }
   out.push(gap(n));
-  return out;
+  return html`<div className="blocks" ref=${blocksRef} ...${stack}>${out}</div>`;
 }
 
 function DownloadMenu({ s, onClose }) {
@@ -124,7 +144,6 @@ function Sermon() {
     <div className="rail group">
       ${railMin ? html`<>
         <button className="ib" onClick=${closeSermon}><${I} name="arrow-left" /></button>
-        <div className="cap" style=${{ writingMode: 'vertical-rl', transform: 'rotate(180deg)', maxHeight: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>${s.meta.title}</div>
         <${Outline} s=${s} min />
         <div className="mini" onClick=${() => set({ kindMenu: { mode: 'insert', index: s.blocks.length } })} title="Add"><${I} name="plus" size=${14} /></div>
         <div style=${{ flex: 1 }} />
@@ -167,7 +186,7 @@ function Sermon() {
         <h1 ref=${titleRef} className="title" contentEditable suppressContentEditableWarning data-ph=${s.meta.template ? 'Template name' : 'Sermon title'} onBlur=${commitTitle} onKeyDown=${e => { if (e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur(); ideaRef.current && ideaRef.current.focus(); } }} />
         <div className="metaline" onClick=${() => set({ sermonModal: { path: s.path } })}>${ml ? ml.split(' · ').map((x, i) => html`<span key=${i}>${i ? '· ' : ''}${x}</span>`) : html`<span>${s.meta.template ? 'Template' : cap(s.meta.status)}</span>`}${ml && s.meta.status !== 'draft' && !s.meta.template ? html`<span>· ${cap(s.meta.status)}</span>` : null}</div>
         <div ref=${ideaRef} className="bigidea" contentEditable suppressContentEditableWarning data-ph="Big idea" onInput=${e => { touch(); const v = e.currentTarget.textContent.replace(/\n/g, ' '); updateOpen(x => { x.meta.big_idea = v; }); }} onKeyDown=${e => { if (e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur(); const f = s.blocks[0]; if (f) set({ curBlock: f.id, focusReq: { id: f.id, where: 'start' } }); } }} />
-        <div className="blocks" ref=${blocksRef}><${Groups} s=${s} nums=${nums} curBlock=${curBlock} /></div>
+        <${Groups} s=${s} nums=${nums} curBlock=${curBlock} blocksRef=${blocksRef} />
       </div>
       <div className="counts" style=${{ right: (side && !narrow ? 360 : 20) + (dictation ? 88 : 0) }}>${words} words</div>
     </div>

@@ -73,18 +73,21 @@ function BlockMenu({ b, index, count, onClose }) {
   </div>`;
 }
 
-function Block({ b, index, count, num, cur, editable = true }) {
+// dnd = { grip, box } handlers from the page (drag by the grip, drop on the block); dropCls marks where the drag would land.
+function Block({ b, index, count, num, cur, editable = true, dnd = null, dropCls = '', dragging = false }) {
   const focusReq = useStore(s => s.focusReq && s.focusReq.id === b.id ? s.focusReq : null);
   const kc = useStore(s => kindColor(b.kind, s.settings.colors));
   const km = useStore(s => s.kindMenu && s.kindMenu.mode === 'switch' && s.kindMenu.id === b.id);
+  const arrive = useStore(s => s.arrive === b.id);
   const [menu, setMenu] = useState(false);
   const body = useRef(null), head = useRef(null), refIn = useRef(null), lbl = useRef(null);
   useEffect(() => {
     if (!focusReq) return;
     const where = focusReq.where;
-    if (where === 'label' && lbl.current) { lbl.current.focus(); caretTo(lbl.current, 'end'); }
-    else if (where === 'heading' && (head.current || refIn.current)) { const el = head.current || refIn.current; el.focus(); if (head.current) caretTo(head.current, 'end'); }
-    else if (body.current) { body.current.focus({ preventScroll: false }); caretTo(body.current, where === 'end' ? 'end' : 'start'); }
+    const opts = { preventScroll: !!focusReq.keepScroll };
+    if (where === 'label' && lbl.current) { lbl.current.focus(opts); caretTo(lbl.current, 'end'); }
+    else if (where === 'heading' && (head.current || refIn.current)) { const el = head.current || refIn.current; el.focus(opts); if (head.current) caretTo(head.current, 'end'); }
+    else if (body.current) { body.current.focus({ preventScroll: !!focusReq.keepScroll }); caretTo(body.current, where === 'end' ? 'end' : 'start'); }
     set({ focusReq: null });
   }, [focusReq]);
   const focusNeighbor = (delta, where) => { const s = open(); if (!s) return; const n = s.blocks[index + delta]; if (!n) return; set({ curBlock: n.id, focusReq: { id: n.id, where } }); };
@@ -115,14 +118,15 @@ function Block({ b, index, count, num, cur, editable = true }) {
   const onLabelKey = e => { if (e.key === 'Enter' || e.key === 'ArrowDown' || e.key === 'Tab') { e.preventDefault(); if (head.current) { head.current.focus(); caretTo(head.current, 'end'); } } else if (e.key === 'ArrowUp') { e.preventDefault(); focusNeighbor(-1, 'end'); } };
   const label = kindLabel(b), hidden = b.flags.includes('hidden'), empty = !b.body.trim() && !b.heading.trim();
   const setCur = () => { if (!cur) set({ curBlock: b.id }); };
-  return html`<div className=${'blk group ' + b.kind + (cur ? ' cur' : '') + (hidden ? ' hidden' : '') + (empty ? ' ph' : '')} data-bid=${b.id} style=${kc ? { '--kc': kc } : undefined} onPointerDown=${setCur} onFocus=${setCur} onClick=${e => { if (e.target === e.currentTarget && body.current) { body.current.focus(); caretTo(body.current, 'end'); } }}>
-    <div className="blk-h" style=${{ position: 'relative' }}>
+  return html`<div className=${'blk group ' + b.kind + (cur ? ' cur' : '') + (hidden ? ' hidden' : '') + (empty ? ' ph' : '') + (dragging ? ' dragging' : '') + (arrive ? ' arrive' : '') + dropCls} data-bid=${b.id} style=${kc ? { '--kc': kc } : undefined} onPointerDown=${setCur} onFocus=${setCur} onClick=${e => { if (e.target === e.currentTarget && body.current) { body.current.focus(); caretTo(body.current, 'end'); } }} >
+    <div className=${'blk-h' + (dnd ? ' drag' : '')} style=${{ position: 'relative' }} ...${dnd ? dnd.grip : {}}>
+      ${dnd && html`<span className="grip reveal"><${I} name="grip" size=${14} /></span>`}
       ${b.kind === 'point' ? html`<span className="kind fixed">${num && html`<span className="pn">${num}</span>`}${label}</span>`
         : b.kind === 'custom' ? html`<span ref=${lbl} className="kind lbl" contentEditable suppressContentEditableWarning spellCheck=${false} data-ph="Label" onKeyDown=${onLabelKey} onInput=${e => { touch(); setBlock(b.id, { label: e.currentTarget.textContent.replace(/\n/g, ' ') }); }} onBlur=${e => { const t = e.currentTarget.textContent.trim(); if (t !== e.currentTarget.textContent) e.currentTarget.textContent = t; if (t !== (b.label || '')) setBlock(b.id, { label: t }); }} />`
         : html`<button className="kind" onClick=${e => { e.stopPropagation(); set({ kindMenu: km ? null : { mode: 'switch', id: b.id } }); }}>${label}</button>`}
       ${hidden && html`<span className="flag" title="Hidden in podium"><${I} name="eye-off" size=${14} /></span>`}
       <span className="sp" />
-      <button className=${'ib quiet reveal' + (menu ? ' show' : '')} onClick=${e => { e.stopPropagation(); setMenu(!menu); }}><${I} name="dots" /></button>
+      <button className=${'ib quiet reveal' + (menu ? ' show' : '')} onClick=${e => { e.stopPropagation(); setMenu(!menu); }}><${I} name="menu" size=${18} fill="currentColor" strokeWidth="0" /></button>
       ${menu && html`<${BlockMenu} b=${b} index=${index} count=${count} onClose=${() => setMenu(false)} />`}
       ${km && html`<${KindMenu} current=${b.kind} onPick=${k => setKind(b.id, k)} allow=${k => { const s = open(); return !s || canSwitch(s.blocks, index, k); }} />`}
     </div>

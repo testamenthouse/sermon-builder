@@ -31,7 +31,7 @@ let state = {
   railMin: ls('sermon.rail', 'max') === 'min', biblePane: ls('sermon.bible', 'closed') === 'open', illPane: ls('sermon.ill', 'closed') === 'open', illReturn: null, podium: false,
   findOpen: false, find: '', findIdx: 0, findCount: 0,
   sermonModal: null, newDialog: false, printMenu: false, settingsOpen: false, servicesOpen: false, confirm: null, kindMenu: null, fold: {}, colorsOpen: false,
-  slotMenu: null, guestModal: null, pillarModal: null, repeatPick: null, bookmarkModal: null,
+  slotMenu: null, guestModal: null, pillarModal: null, repeatPick: null, bookmarkModal: null, arrive: null,
   alert: null, dictation: null, dictPartial: '', dictLevel: 0, dictNote: '',
   narrow: NARROW.matches, drawer: false
 };
@@ -404,10 +404,21 @@ function setReference(id, heading) {
   const refill = !!next && (!prev || prev.ref !== next.ref || !b.body.trim());
   updateOpen(x => { const y = x.blocks.find(z => z.id === id); y.heading = heading; if (refill) y.body = passageText(next.verses); });
 }
+// A passage into the sermon: an empty scripture block that is current (the `Bookmarks…` row leaves one) is filled;
+// otherwise a scripture block is added after the current block. Every insert path (pane, bookmarks, Bible screen) lands here.
 function insertScripture(ref, vs, afterId) {
   const s = open(); if (!s) return;
+  const cur = afterId ? s.blocks.find(b => b.id === afterId) : null;
+  if (cur && cur.kind === 'scripture' && !cur.body.trim() && !cur.heading.trim()) { touch(); setBlock(cur.id, { heading: ref, body: passageText(vs) }); set({ curBlock: cur.id, focusReq: { id: cur.id, where: 'end' } }); return cur.id; }
   const i = afterId ? s.blocks.findIndex(b => b.id === afterId) : s.blocks.length - 1;
   return insertBlock(i + 1, 'scripture', { heading: ref, body: passageText(vs) });
+}
+// Arriving at a block from the rail: smooth scroll to center and a soft highlight that fades.
+let arriveTimer = null;
+function arriveAt(id) {
+  set({ curBlock: id, focusReq: { id, where: 'start', keepScroll: true }, drawer: false, arrive: id });
+  const el = document.querySelector('[data-bid="' + id + '"]'); if (el) el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  clearTimeout(arriveTimer); arriveTimer = setTimeout(() => { if (state.arrive === id) set({ arrive: null }); }, 1400);
 }
 
 // ---- illustrations library
@@ -469,7 +480,6 @@ async function deleteBookmark(path) {
 function useBookmark(bm) {
   const s = open(); if (!s) return null; const r = lookupNow(bm.meta.reference); if (!r) { flash('Reference not found'); return null; }
   const cur = s.blocks.find(b => b.id === state.curBlock);
-  if (cur && cur.kind === 'scripture' && !cur.body.trim()) { touch(); setBlock(cur.id, { heading: r.ref, body: passageText(r.verses) }); set({ focusReq: { id: cur.id, where: 'end' } }); return cur.id; }
   return insertScripture(r.ref, r.verses, cur ? cur.id : null);
 }
 // The Bible screen: a reference (or the remembered chapter) in a full reading page; `←` returns to the sermon it came from.
@@ -534,5 +544,5 @@ function closeMenus() { set({ printMenu: false, settingsOpen: false, servicesOpe
 const stop = e => e.stopPropagation();
 // Headless QA hook: window.__sb.setLibrary(handle) then window.__sb.loadLibrary(name).
 if (typeof window !== 'undefined') window.__sb = Object.assign(window.__sb || {}, { loadLibrary, get, set, reconcile, flushDisk, startDictation, stopDictation });
-SB.store = { DEFAULTS, get, set, useStore, applyTheme, flash, sermonOf, open, touch, illustrationText, loadLibrary, sortSermons, boot, pickFolder, resumeFolder, logout, reconcile, markDirty, flushDisk, saveNow, setSettings, setPlan, openSermon, closeSermon, updateSermon, updateOpen, createSermon, commitMeta, deleteSermon, duplicateSermon, addPreached, removePreached, movePreached, guestKey, addGuest, updateGuest, removeGuest, addPillar, updatePillar, removePillar, setCollectionMeta, createCollection, renameCollection, deleteCollection, insertBlock, removeBlock, moveBlock, moveBlockTo, duplicateBlock, setKind, toggleFold, toggleFlag, setBlock, fillScripture, setReference, insertScripture, createIllustration, updateIllustration, renameIllustration, deleteIllustration, createBookmark, updateBookmark, renameBookmark, deleteBookmark, useBookmark, openBookmarks, leaveBookmarks, openBible, leaveBible, setBiblePos, insertFromBible, startDictation, stopDictation, toggleDictation, toggleRail, toggleDrawer, toggleBible, setBibleMode, setCalScope, toggleIll, useIllustration, openIllustrations, leaveIllustrations, setLibView, setLibLayout, closeLibFind, newSermon, openTemplates, newTemplate, closeMenus, stop };
+SB.store = { DEFAULTS, get, set, useStore, applyTheme, flash, sermonOf, open, touch, illustrationText, loadLibrary, sortSermons, boot, pickFolder, resumeFolder, logout, reconcile, markDirty, flushDisk, saveNow, setSettings, setPlan, openSermon, closeSermon, updateSermon, updateOpen, createSermon, commitMeta, deleteSermon, duplicateSermon, addPreached, removePreached, movePreached, guestKey, addGuest, updateGuest, removeGuest, addPillar, updatePillar, removePillar, setCollectionMeta, createCollection, renameCollection, deleteCollection, insertBlock, removeBlock, moveBlock, moveBlockTo, duplicateBlock, setKind, toggleFold, toggleFlag, setBlock, fillScripture, setReference, insertScripture, arriveAt, createIllustration, updateIllustration, renameIllustration, deleteIllustration, createBookmark, updateBookmark, renameBookmark, deleteBookmark, useBookmark, openBookmarks, leaveBookmarks, openBible, leaveBible, setBiblePos, insertFromBible, startDictation, stopDictation, toggleDictation, toggleRail, toggleDrawer, toggleBible, setBibleMode, setCalScope, toggleIll, useIllustration, openIllustrations, leaveIllustrations, setLibView, setLibLayout, closeLibFind, newSermon, openTemplates, newTemplate, closeMenus, stop };
 })(globalThis.SB ||= {});

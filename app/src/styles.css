@@ -186,6 +186,10 @@ input,textarea,select{font:inherit;color:inherit;background:none}
 .gap.end .plus{opacity:1}
 .blk{position:relative;border-radius:8px;padding:8px 12px;margin:0 -12px}
 .blk.cur{background:var(--fill)}
+/* arriving from the rail: a soft highlight that settles into the current-block fill */
+.blk.arrive{animation:arrive 1.4s ease-out}
+@keyframes arrive{0%{background:var(--line)}100%{background:var(--fill)}}
+@media (prefers-reduced-motion:reduce){.blk.arrive{animation:none}}
 .blk-h{display:flex;align-items:center;gap:6px;min-height:24px;margin-bottom:4px}
 .blk-h .kind{font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:.08em;color:var(--kc,var(--faint));padding:3px 4px;border-radius:4px;cursor:pointer}
 .blk-h .kind:hover{color:var(--fg);background:var(--line)}
@@ -196,6 +200,20 @@ input,textarea,select{font:inherit;color:inherit;background:none}
 .blk-h .kind.lbl:focus{color:var(--fg);background:var(--fill)}
 .blk-h .kind.lbl:empty:before{content:attr(data-ph);color:var(--faint);opacity:.7}
 .blk-h .n{font-size:11px;font-weight:500;color:var(--faint);letter-spacing:.08em}
+/* move and delete from the page itself (user): grip left of the caption, trash beside the dots, both hover-revealed */
+.blk-h.drag{cursor:grab;margin-left:-8px;padding-left:8px;border-radius:6px}
+.blk-h.drag:active{cursor:grabbing}
+.blk-h .grip{display:flex;width:14px;height:14px;color:var(--muted);margin:0 4px 0 -4px;flex:none}
+.blk-h.drag:hover .grip{color:var(--fg)}
+/* the dots menu reads as muted ink while the block is hovered, not the faint token (user could not see it) */
+.blk:hover .blk-h .ib.quiet,.blk-h .ib.quiet.show{color:var(--muted)}
+.blk .blk-h .ib.quiet:hover{color:var(--fg)}
+.blk.dragging,.pgroup.dragging{opacity:.35}
+.pgroup.dragging .blk{opacity:1}
+.blk.drop-before:before,.blk.drop-after:after{content:"";position:absolute;left:12px;right:12px;height:2px;background:var(--fg);border-radius:1px;pointer-events:none;z-index:1}
+.blk.drop-before:before{top:-19px}
+.blk.drop-after:after{bottom:-19px}
+.pgroup .gin .blk.drop-before:before{top:-19px}
 .blk-h .flag{color:var(--faint);display:flex;width:14px;height:14px}
 .blk-h .sp{flex:1}
 .blk.hidden .body,.blk.hidden .hd{opacity:.45}
